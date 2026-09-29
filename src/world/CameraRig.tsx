@@ -5,6 +5,8 @@ import { EYE_HEIGHT, FLY, ROAM, SCROLL } from '../lib/config'
 import { live, useStore } from '../lib/store'
 import { input, rig } from '../lib/rig'
 
+const PARALLAX = { YAW: 0.05, PITCH: 0.03 } // subtle head movement following the mouse (radians)
+
 // Blender 24 mm lens on a 36 mm sensor, "auto" sensor fit (fits the longer side).
 function verticalFov(aspect: number) {
   const half = Math.atan(FLY.SENSOR_MM / 2 / FLY.LENS_MM)
@@ -12,8 +14,7 @@ function verticalFov(aspect: number) {
   return THREE.MathUtils.radToDeg(v)
 }
 
-// Blender smooths the look target by 0.12 per frame at 24 fps; as a rate that is:
-const LOOK_RATE = -Math.log(1 - FLY.LOOK_SMOOTH_24FPS) * 24
+const LOOK_RATE = SCROLL.LOOK_RATE
 const MAX_PITCH = THREE.MathUtils.degToRad(70)
 
 const yawOf = (dx: number, dz: number) => Math.atan2(-dx, -dz)
@@ -28,9 +29,11 @@ export function CameraRig() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const size = useThree((s) => s.size)
   const look = useRef(new THREE.Vector3())
+  const parallax = useRef({ x: 0, y: 0 })
   const tmp = useRef({ target: new THREE.Vector3(), pos: new THREE.Vector3(), prevTime: 0 })
 
   useEffect(() => {
+    rig.camera = camera
     camera.fov = verticalFov(size.width / size.height)
     camera.updateProjectionMatrix()
     camera.rotation.order = 'YXZ'
@@ -45,27 +48,36 @@ export function CameraRig() {
     // ---- route pose (always computed: it is also the destination of camera moves)
     live.time += (targetTime - live.time) * (1 - Math.exp(-SCROLL.FOLLOW_RATE * dt))
     if (Math.abs(targetTime - live.time) < 1e-4) live.time = targetTime
-    const scrolling = Math.abs(live.time - tmp.current.prevTime) > 1e-3
+    const scrolled = Math.abs(live.time - tmp.current.prevTime) // fly-through seconds this frame
     tmp.current.prevTime = live.time
     const d = path.distAtTime(live.time)
     live.progress = path.duration > 0 ? live.time / path.duration : 0
     path.pointAt(d, pos)
     path.lookTargetAt(d, target)
+    // smooth the viewing angle (not the look point, which the camera could overtake and flip)
+    const tx = target.x - pos.x, ty = target.y - pos.y, tz = target.z - pos.z
+    const targetYaw = yawOf(tx, tz)
+    const targetPitch = Math.atan2(ty, Math.hypot(tx, tz))
+    const la = look.current
     if (rig.resetLook) {
-      look.current.copy(target)
+      la.set(targetYaw, targetPitch, 0)
       rig.resetLook = false
-    } else look.current.lerp(target, 1 - Math.exp(-LOOK_RATE * dt))
-    const lx = look.current.x - pos.x, ly = look.current.y - pos.y, lz = look.current.z - pos.z
-    const routeYaw = yawOf(lx, lz)
-    const routePitch = Math.atan2(ly, Math.hypot(lx, lz))
+    } else {
+      const k = 1 - Math.exp(-LOOK_RATE * dt)
+      la.x += shortAngle(la.x, targetYaw) * k
+      la.y += (targetPitch - la.y) * k
+    }
+    const routeYaw = la.x
+    const routePitch = la.y
+    rig.routeYaw = routeYaw
+    rig.routePitch = routePitch
 
     if (mode === 'route') {
       // drag-to-look offset eases back to the path once the visitor scrolls again
-      if (scrolling) {
-        const k = Math.exp(-ROAM.OFFSET_RETURN_RATE * dt)
-        rig.offYaw *= k
-        rig.offPitch *= k
-      }
+      // (in proportion to how far they scroll, so tiny scroll noise doesn't cancel a look-around)
+      const k = Math.exp(-ROAM.OFFSET_RETURN_RATE * scrolled)
+      rig.offYaw *= k
+      rig.offPitch *= k
       rig.pos.copy(pos)
       rig.yaw = routeYaw + rig.offYaw
       rig.pitch = THREE.MathUtils.clamp(routePitch + rig.offPitch, -MAX_PITCH, MAX_PITCH)
@@ -100,12 +112,24 @@ export function CameraRig() {
       rig.pos.lerpVectors(m.from, pos, t)
       rig.pos.y += Math.sin(Math.PI * t) * m.arc
       const lookDown = Math.sin(Math.PI * t) * (m.arc > 0 ? 0.35 : 0)
-      rig.yaw = m.fromYaw + shortAngle(m.fromYaw, routeYaw) * t
-      rig.pitch = THREE.MathUtils.lerp(m.fromPitch, routePitch, t) - lookDown
+      let toYaw = routeYaw, toPitch = routePitch
+      if (m.lookAt) {
+        const dx = m.lookAt.x - pos.x, dy = m.lookAt.y - pos.y, dz = m.lookAt.z - pos.z
+        toYaw = yawOf(dx, dz)
+        toPitch = Math.atan2(dy, Math.hypot(dx, dz))
+      }
+      rig.yaw = m.fromYaw + shortAngle(m.fromYaw, toYaw) * t
+      rig.pitch = THREE.MathUtils.lerp(m.fromPitch, toPitch, t) - lookDown
     }
 
+    // gentle parallax toward the mouse (not while dragging or roaming)
+    const pk = 1 - Math.exp(-2.5 * dt)
+    const px = mode === 'route' ? input.mouse.x : 0, py = mode === 'route' ? input.mouse.y : 0
+    parallax.current.x += (px - parallax.current.x) * pk
+    parallax.current.y += (py - parallax.current.y) * pk
+
     camera.position.copy(rig.pos)
-    camera.rotation.set(rig.pitch, rig.yaw, 0, 'YXZ')
+    camera.rotation.set(rig.pitch - parallax.current.y * PARALLAX.PITCH, rig.yaw - parallax.current.x * PARALLAX.YAW, 0, 'YXZ')
     live.x = rig.pos.x
     live.z = rig.pos.z
     live.yaw = rig.yaw

@@ -51,8 +51,8 @@ export class RoutePath {
     while (d < this.length) {
       this.pointAt(d, pos)
       this.forwardAt(d, fwd)
-      const [, sd] = this.nearestSlotAhead(pos, fwd)
-      const speed = FLY.CRUISE_SPEED * (FLY.SLOW_FACTOR + (1 - FLY.SLOW_FACTOR) * smoothstep(FLY.SLOW_NEAR, FLY.SLOW_FAR, sd))
+      const w = this.attention(pos, fwd).max
+      const speed = FLY.CRUISE_SPEED * (FLY.SLOW_FACTOR + (1 - FLY.SLOW_FACTOR) * (1 - w))
       const ds = Math.min(step, this.length - d)
       t += ds / speed
       d += ds
@@ -121,33 +121,62 @@ export class RoutePath {
     return best
   }
 
-  nearestSlotAhead(pos: THREE.Vector3, forward: THREE.Vector3): [THREE.Vector3 | null, number] {
-    let best: THREE.Vector3 | null = null, bestD = 1e9
+  /** Distance along the path with the best head-on view of a frame (not too close, not too far). */
+  bestViewDist(center: THREE.Vector3, normal: THREE.Vector3, size: number) {
+    const ideal = Math.min(22, Math.max(7, size * 1.3))
+    let best = this.closestDist(center), bestScore = 0
+    for (let i = 0; i < this.dense.length; i++) {
+      const p = this.dense[i]
+      const vx = p.x - center.x, vz = p.z - center.z
+      const d = Math.hypot(vx, vz)
+      if (d < 3 || d > 45) continue
+      const facing = (vx * normal.x + vz * normal.z) / (d * Math.hypot(normal.x, normal.z) || 1)
+      if (facing <= 0.1) continue
+      const score = facing * Math.exp(-(((d - ideal) / ideal) ** 2))
+      if (score > bestScore) {
+        bestScore = score
+        best = this.dist[i]
+      }
+    }
+    return best
+  }
+
+  /**
+   * How much each frame ahead pulls the visitor's attention, as a smooth function of position.
+   * Same rules as the Blender script (full pull within SLOW_NEAR, none beyond SLOW_FAR, only frames
+   * roughly ahead), but blended instead of switching between "nearest" frames, so the camera never jerks.
+   */
+  attention(pos: THREE.Vector3, forward: THREE.Vector3, centroid?: THREE.Vector3) {
+    let max = 0, sum = 0
+    centroid?.set(0, 0, 0)
     for (const c of this.slots) {
       const vx = c.x - pos.x, vz = c.z - pos.z
       const d = Math.hypot(vx, vz)
-      if (d < bestD && d > 0.01 && (vx * forward.x + vz * forward.z) / d > -0.2) {
-        best = c
-        bestD = d
-      }
+      if (d > FLY.SLOW_FAR || d < 0.01) continue
+      const facing = smoothstep(-0.25, 0.2, (vx * forward.x + vz * forward.z) / d)
+      const w = (1 - smoothstep(FLY.SLOW_NEAR, FLY.SLOW_FAR, d)) * facing
+      if (w <= 0) continue
+      max = Math.max(max, w)
+      // closer frames dominate the gaze
+      const g = w * w * w
+      sum += g
+      centroid?.addScaledVector(c, g)
     }
-    return [best, bestD]
+    if (centroid && sum > 0) centroid.divideScalar(sum)
+    return { max, sum }
   }
 
-  /** un-smoothed look target at distance d (ahead on the path, pulled toward the nearest frame) */
+  /** un-smoothed look target at distance d (ahead on the path, pulled toward the frames nearby) */
   lookTargetAt(d: number, out = new THREE.Vector3()) {
     const pos = this.pointAt(d)
-    const ahead = this.pointAt(d + FLY.LOOK_AHEAD)
-    const fwd = new THREE.Vector3(ahead.x - pos.x, 0, ahead.z - pos.z)
-    if (fwd.lengthSq() > 1e-4) fwd.normalize()
-    else fwd.copy(this.forwardAt(d))
-    out.set(ahead.x, EYE_HEIGHT - 0.1, ahead.z)
-    if (ahead.distanceToSquared(pos) < 1) out.set(pos.x + fwd.x * FLY.LOOK_AHEAD, EYE_HEIGHT - 0.1, pos.z + fwd.z * FLY.LOOK_AHEAD)
-    const [sc, sd] = this.nearestSlotAhead(pos, fwd)
-    if (sc) {
-      const w = FLY.LOOK_AT_WORK * (1 - smoothstep(FLY.SLOW_NEAR, FLY.SLOW_FAR, sd))
-      out.lerp(sc, w)
-    }
+    // look ahead along the path; past the end, keep going straight so the gaze never snaps
+    const aheadD = d + FLY.LOOK_AHEAD
+    if (aheadD <= this.length) this.pointAt(aheadD, out)
+    else this.pointAt(this.length, out).addScaledVector(this.forwardAt(this.length), aheadD - this.length)
+    out.y = EYE_HEIGHT - 0.1
+    const c = new THREE.Vector3()
+    const { max, sum } = this.attention(pos, this.forwardAt(d), c)
+    if (sum > 0) out.lerp(c, FLY.LOOK_AT_WORK * max)
     return out
   }
 }

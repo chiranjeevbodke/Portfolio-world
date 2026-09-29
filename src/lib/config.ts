@@ -15,13 +15,13 @@ export const FLY = {
   SENSOR_MM: 36,
 }
 
-// Scroll feel. One "second" = one second of the Blender fly-through.
+// Scroll feel. Lenis eases a real page scroll; one fly-through second = PX_PER_SECOND of scrolling.
 export const SCROLL = {
-  SECONDS_PER_WHEEL_PX: 0.012, // mouse wheel / trackpad
-  SECONDS_PER_TOUCH_PX: 0.035, // vertical swipe on touch screens
-  SECONDS_PER_KEY: 1.6, // PageUp / PageDown / Space
-  FOLLOW_RATE: 4.0, // how quickly the camera catches up with the scroll (1/s)
-  FLING_DECAY: 3.5, // touch momentum decay (1/s)
+  PX_PER_SECOND: 80, // whole route ~13,000 px
+  LERP: 0.08, // Lenis wheel smoothing (lower = silkier)
+  TOUCH_LERP: 0.075, // Lenis touch smoothing
+  FOLLOW_RATE: 14, // camera catch-up with the eased scroll (1/s), just removes frame-to-frame noise
+  LOOK_RATE: 3.2, // how quickly the head turns toward its target (1/s)
 }
 
 // Golden-hour look. Sun direction comes from the Blender sun (rot 68°, 0, -40°),
@@ -46,5 +46,5 @@ export const ROAM = {
   RUN_SPEED: 8.0, // m/s with Shift
   TURN_SPEED: 1.9, // rad/s (arrow keys, joystick left/right)
   LOOK_PER_PX: 0.0035, // rad per pixel of drag
-  OFFSET_RETURN_RATE: 2.5, // how fast a look-around on the route eases back while scrolling (1/s)
+  OFFSET_RETURN_RATE: 0.9, // look-around on the route eases back as you scroll (per fly-through second scrolled)
 }

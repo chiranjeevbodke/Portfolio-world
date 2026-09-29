@@ -1,12 +1,14 @@
 import * as THREE from 'three'
 import type { Slot } from '../world/parseWorld'
 import type { RoutePath } from './routePath'
+import { assignmentFor } from '../content/projects'
 
 export type Zone = {
   id: string
   label: string
   center: THREE.Vector3 // centre of the zone's display frames
   routeTime: number // fly-through time of the route spot that best overlooks the zone
+  key: string // slot id the camera faces on arrival
 }
 
 const LABELS: Record<string, string> = {
@@ -31,15 +33,19 @@ export function computeZones(slots: Slot[], path: RoutePath): Zone[] {
     const center = new THREE.Vector3()
     for (const s of list) center.add(s.center)
     center.divideScalar(list.length)
-    // route spot closest (on average) to the zone's frames; the earliest one if the route passes twice
-    const scores = path.dense.map((p) => list.reduce((sum, s) => sum + Math.hypot(s.center.x - p.x, s.center.z - p.z), 0))
-    const min = Math.min(...scores)
-    const i = scores.findIndex((v) => v <= min * 1.1 + 1)
+    // land in front of the zone's first project (or its biggest frame)
+    const heroes = list
+      .map((s) => ({ s, a: assignmentFor(s.id) }))
+      .filter((x) => x.a.kind === 'project' && x.a.role === 'hero')
+      .sort((x, y) => (x.a.kind === 'project' && y.a.kind === 'project' ? x.a.project.index - y.a.project.index : 0))
+    const key = heroes[0]?.s ?? list.reduce((a, b) => (b.size > a.size ? b : a))
+    const d = path.bestViewDist(key.center, key.normal, key.size)
     zones.push({
       id,
       label: LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1),
       center,
-      routeTime: path.timeAtDist(path.dist[i]),
+      routeTime: path.timeAtDist(d),
+      key: key.id,
     })
   }
   return zones.sort((a, b) => a.routeTime - b.routeTime)

@@ -8,6 +8,13 @@ A stylised low-poly Mumbai neighbourhood you explore at street level. The world 
 
 Replace `world.glb` with a detailed export that keeps those names and everything keeps working.
 
+## Live site
+
+Deployed on Netlify: https://chiranjeev-portfolio-world.netlify.app (every push to the branch → redeploy).
+
+- `/` the 3D neighbourhood · `/work` all projects in a grid · `/work/<slug>` a project page
+- To add images or projects, see [CONTENT_GUIDE.md](CONTENT_GUIDE.md).
+
 ## Run locally
 
 Needs Node 20+.
@@ -27,11 +34,16 @@ npm run preview    # serve the production build
 - `src/lib/walkGrid.ts` collisions: a 25 cm walkable grid generated from the loaded meshes
 - `src/lib/rig.ts` free roam / back-to-route / map jumps (GSAP)
 - `src/world/MapCapture.tsx` renders the mini-map from the world itself (top-down, once at load)
+- `src/lib/scroll.ts` Lenis smooth scroll; page scroll position = position on the route
+- `src/world/Frames.tsx` artwork on every frame, focus highlight, lazy image loading, click picking
+- `src/content/projects.ts` reads `content_map.json` + `content/projects/*/project.json`
+- `src/ui/ProjectPanel.tsx`, `src/ui/WorkPage.tsx` project page and `/work` grid
 - `src/lib/config.ts` all tuning numbers (speeds, scroll feel, sky and sun colours)
 
 ## Controls
 
 - Scroll / swipe up-down / PageUp, PageDown, Space: walk the route (reverse to go back)
+- Click or tap a hoarding (or press Enter when its label shows): open the project
 - Drag (mouse) or swipe sideways (touch): look around
 - WASD or the joystick: leave the route and walk freely; arrows or joystick left/right turn; Shift runs
 - Scroll again or "Back to the walk": ease back onto the route

@@ -22,8 +22,14 @@ type State = {
   hasScrolled: boolean
   setWorld: (world: ParsedWorld, path: RoutePath, walk: WalkGrid | null, zones: Zone[]) => void
   setMap: (map: MapImage) => void
-  scrollBy: (seconds: number) => void
+  setTargetTime: (seconds: number) => void
   setMode: (mode: CameraMode) => void
+  /** artwork is on the frames */
+  framesReady: boolean
+  setFramesReady: (v: boolean) => void
+  /** the display frame the visitor is looking at / hovering (slot id) */
+  focusId: string | null
+  setFocusId: (id: string | null) => void
 }
 
 export const useStore = create<State>((set, get) => ({
@@ -37,13 +43,12 @@ export const useStore = create<State>((set, get) => ({
   hasScrolled: false,
   setWorld: (world, path, walk, zones) => set({ world, path, walk, zones }),
   setMap: (map) => set({ map }),
-  scrollBy: (seconds) => {
-    const { path, targetTime, hasScrolled } = get()
-    if (!path) return
-    const t = Math.max(0, Math.min(path.duration, targetTime + seconds))
-    set({ targetTime: t, ...(hasScrolled ? {} : { hasScrolled: true }) })
-  },
+  setTargetTime: (t) => set({ targetTime: t, ...(t > 0.3 && !get().hasScrolled ? { hasScrolled: true } : {}) }),
   setMode: (mode) => set({ mode }),
+  framesReady: false,
+  setFramesReady: (framesReady) => set({ framesReady }),
+  focusId: null,
+  setFocusId: (focusId) => set({ focusId }),
 }))
 
 /** Per-frame camera values, written by the rig and read by UI without React re-renders. */
@@ -53,6 +58,8 @@ export const live = {
   x: 0,
   z: 0,
   yaw: 0, // 0 = facing north (-Z), positive = turning left
+  /** screen position (%) of the focused frame's label */
+  label: { x: 50, y: 50, visible: false },
 }
 
 if (import.meta.env.DEV) Object.assign(window, { __portfolio: { useStore, live } })

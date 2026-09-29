@@ -16,6 +16,7 @@ export type Slot = {
   meshes: THREE.Mesh[]
   center: THREE.Vector3 // world-space centre
   normal: THREE.Vector3 // world-space direction the image faces
+  size: number // bounding-box diagonal (m)
 }
 
 export type ParsedWorld = {
@@ -118,6 +119,7 @@ export function parseWorld(scene: THREE.Object3D): ParsedWorld {
         meshes,
         center: box.getCenter(new THREE.Vector3()),
         normal: faceNormal(meshes),
+        size: box.getSize(new THREE.Vector3()).length(),
       })
       return
     }

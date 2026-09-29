@@ -25,10 +25,20 @@ export type ParsedWorld = {
   slots: Slot[]
   route: THREE.Vector3[]
   bounds: THREE.Box3
+  /** spots where an animated animal loops in place: life_<kind>__<id> */
+  lifeSpots: { kind: string; id: string; position: THREE.Vector3; yaw: number }[]
+  /** loops for moving life: lifepath_<name>_00, _01 ... (props on _00: kind, count, speed) */
+  lifePaths: { name: string; kind: string; count: number; speed: number; points: THREE.Vector3[] }[]
+  /** cloud_* meshes (kept separate so they can drift) */
+  clouds: THREE.Object3D[]
+  /** opening aerial shot: cam_intro / cam_intro_target */
+  intro: { position: THREE.Vector3; target: THREE.Vector3 } | null
 }
 
 const SLOT_RE = /^slot_([a-z0-9-]+)__(.+)$/i
 const ROUTE_RE = /^route_(\d+)/i
+const LIFE_RE = /^life_([a-z]+)__(.+)$/i
+const LIFEPATH_RE = /^lifepath_(.+)_(\d+)$/i
 
 function slotIdFrom(obj: THREE.Object3D): { id: string; zone: string } | null {
   const ud = obj.userData ?? {}
@@ -39,7 +49,7 @@ function slotIdFrom(obj: THREE.Object3D): { id: string; zone: string } | null {
   return m ? { id: `${m[1]}/${m[2]}`, zone: m[1] } : null
 }
 
-function toFlatMaterial(src: THREE.Material): THREE.Material {
+export function toFlatMaterial(src: THREE.Material): THREE.Material {
   const s = src as THREE.MeshStandardMaterial
   const m = new THREE.MeshLambertMaterial({
     name: src.name,
@@ -89,8 +99,39 @@ export function parseWorld(scene: THREE.Object3D): ParsedWorld {
   const routeNodes: { n: number; p: THREE.Vector3 }[] = []
   const staticMeshes: THREE.Mesh[] = []
   const slotObjects = new Set<THREE.Object3D>()
+  const lifeSpots: ParsedWorld['lifeSpots'] = []
+  const pathNodes = new Map<string, { props: Record<string, unknown>; nodes: { n: number; p: THREE.Vector3 }[] }>()
+  const cloudSources: THREE.Object3D[] = []
+  let introPos: THREE.Vector3 | null = null
+  let introTarget: THREE.Vector3 | null = null
 
   scene.traverse((o) => {
+    if (!(o as THREE.Mesh).isMesh) {
+      const life = o.name.match(LIFE_RE)
+      if (life) {
+        const q = o.getWorldQuaternion(new THREE.Quaternion())
+        const yaw = new THREE.Euler().setFromQuaternion(q, 'YXZ').y
+        lifeSpots.push({ kind: String(o.userData.kind ?? life[1]).toLowerCase(), id: life[2], position: o.getWorldPosition(new THREE.Vector3()), yaw })
+        return
+      }
+      const lp = o.name.match(LIFEPATH_RE)
+      if (lp) {
+        const entry = pathNodes.get(lp[1]) ?? { props: {}, nodes: [] as { n: number; p: THREE.Vector3 }[] }
+        entry.nodes.push({ n: Number(lp[2]), p: o.getWorldPosition(new THREE.Vector3()) })
+        if (o.userData.kind) entry.props = o.userData
+        pathNodes.set(lp[1], entry)
+        return
+      }
+      if (o.name === 'cam_intro') introPos = o.getWorldPosition(new THREE.Vector3())
+      if (o.name === 'cam_intro_target') introTarget = o.getWorldPosition(new THREE.Vector3())
+    }
+    if (o.name.startsWith('cloud_') && o.parent === scene) {
+      cloudSources.push(o)
+      return
+    }
+    let inCloud = false
+    for (let q = o.parent; q; q = q.parent) if (q.name.startsWith('cloud_')) inCloud = true
+    if (inCloud) return
     const r = o.name.match(ROUTE_RE)
     if (r && !(o as THREE.Mesh).isMesh) {
       routeNodes.push({ n: Number(r[1]), p: o.getWorldPosition(new THREE.Vector3()) })
@@ -204,5 +245,42 @@ export function parseWorld(scene: THREE.Object3D): ParsedWorld {
   const bounds = new THREE.Box3()
   for (const m of scenery) bounds.expandByObject(m)
 
-  return { root, scenery, slots, route: routeNodes.map((r) => r.p), bounds }
+  // clouds: copied as they are (flat-shaded, no shadows) so the site can drift them
+  const clouds = cloudSources.map((src) => {
+    const c = src.clone(true)
+    src.matrixWorld.decompose(c.position, c.quaternion, c.scale)
+    c.traverse((m) => {
+      const mesh = m as THREE.Mesh
+      if (!mesh.isMesh) return
+      mesh.material = Array.isArray(mesh.material) ? mesh.material.map(flat) : flat(mesh.material)
+      mesh.castShadow = mesh.receiveShadow = false
+    })
+    root.add(c)
+    return c as THREE.Object3D
+  })
+
+  const lifePaths: ParsedWorld['lifePaths'] = []
+  for (const [name, { props, nodes }] of pathNodes) {
+    if (nodes.length < 2) continue
+    nodes.sort((a, b) => a.n - b.n)
+    lifePaths.push({
+      name,
+      kind: String(props.kind ?? name.split('_')[0]).toLowerCase(),
+      count: Math.max(1, Number(props.count) || 1),
+      speed: Number(props.speed) || 3,
+      points: nodes.map((x) => x.p),
+    })
+  }
+
+  return {
+    root,
+    scenery,
+    slots,
+    route: routeNodes.map((r) => r.p),
+    bounds,
+    lifeSpots,
+    lifePaths,
+    clouds,
+    intro: introPos && introTarget ? { position: introPos, target: introTarget } : null,
+  }
 }

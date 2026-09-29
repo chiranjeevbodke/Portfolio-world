@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useProgress } from '@react-three/drei'
+import gsap from 'gsap'
 import { live, useStore } from '../lib/store'
-import { goToSlot, moveToRouteTime, returnToRoute } from '../lib/rig'
+import { goToSlot, returnToRoute } from '../lib/rig'
+import { scrollToTop } from '../lib/scroll'
+import { SCROLL } from '../lib/config'
 import { navigate, parsePath } from '../lib/router'
 import { assignmentFor, projectBySlug } from '../content/projects'
 import { openFrame } from '../world/useWorldInput'
@@ -44,19 +47,35 @@ function Intro() {
   const el = useRef<HTMLDivElement>(null)
   useRaf(() => {
     if (!el.current) return
-    const k = Math.min(1, live.time / 2.2)
+    // fades as the camera swoops down from the aerial shot
+    const k = Math.min(1, Math.max(0, (live.time + SCROLL.INTRO_SECONDS) / (SCROLL.INTRO_SECONDS * 0.45)))
     el.current.style.opacity = String(1 - k)
     el.current.style.transform = `translate3d(0, ${-k * 40}px, 0)`
     el.current.style.visibility = k >= 1 ? 'hidden' : 'visible'
   })
+  // letters rise in once the neighbourhood has loaded
+  useEffect(() => {
+    if (!el.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const tl = gsap.timeline({ delay: 0.5 })
+    // fromTo (not from) so React's double effect in dev can't leave the letters hidden
+    tl.fromTo(el.current.querySelectorAll('.intro__char'), { yPercent: 110, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.1, ease: 'power4.out', stagger: 0.045 })
+      .fromTo(el.current.querySelectorAll('.intro__fade'), { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, ease: 'power3.out', stagger: 0.12 }, '-=0.7')
+    return () => void tl.kill()
+  }, [])
   return (
     <div ref={el} className="intro">
-      <p className="intro__kicker">Portfolio · Mumbai</p>
-      <h1 className="intro__title">
-        Chiranjeev
-        <em>Associate creative director</em>
+      <p className="intro__kicker intro__fade">Portfolio · Mumbai</p>
+      <h1 className="intro__title" aria-label="Chiranjeev, associate creative director">
+        <span className="intro__word" aria-hidden>
+          {'Chiranjeev'.split('').map((c, i) => (
+            <span key={i} className="intro__char">
+              {c}
+            </span>
+          ))}
+        </span>
+        <em className="intro__fade" aria-hidden>Associate creative director</em>
       </h1>
-      <p className="intro__hint">
+      <p className="intro__hint intro__fade">
         <span className="scroll-hint__icon" aria-hidden />
         {isTouch ? 'Swipe up to walk the neighbourhood' : 'Scroll to walk the neighbourhood'}
       </p>
@@ -178,7 +197,8 @@ export function Overlay() {
           className="brand__name"
           onClick={(e) => {
             e.preventDefault()
-            moveToRouteTime(0)
+            if (useStore.getState().mode === 'free') returnToRoute()
+            else scrollToTop()
           }}
         >
           Chiranjeev

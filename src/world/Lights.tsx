@@ -23,15 +23,29 @@ export function Lights({ shadowSize }: { shadowSize: number }) {
     return () => void scene.remove(l.target)
   }, [scene])
 
-  // keep the shadow box centred on the visitor; snap to texels to avoid shimmering
+  // keep the shadow box on what the visitor sees: around them at street level, and on the
+  // ground ahead (and wider) from the air; snapped to texels to avoid shimmering
+  const tmp = useRef({ dir: new THREE.Vector3(), range: SHADOW_RANGE })
   useFrame(({ camera }) => {
     const l = sun.current
     if (!l) return
-    const texel = (SHADOW_RANGE * 2) / shadowSize
-    const x = Math.round(camera.position.x / texel) * texel
-    const z = Math.round(camera.position.z / texel) * texel
+    const h = Math.max(0, camera.position.y - 2)
+    const range = Math.round(SHADOW_RANGE + h * 1.3)
+    const dir = camera.getWorldDirection(tmp.current.dir)
+    const ahead = dir.y < -0.05 ? Math.min(140, camera.position.y / -dir.y) * 0.8 : 12
+    if (range !== tmp.current.range) {
+      tmp.current.range = range
+      const cam = l.shadow.camera
+      cam.left = cam.bottom = -range
+      cam.right = cam.top = range
+      cam.far = 250 + h * 2
+      cam.updateProjectionMatrix()
+    }
+    const texel = (range * 2) / shadowSize
+    const x = Math.round((camera.position.x + dir.x * ahead) / texel) * texel
+    const z = Math.round((camera.position.z + dir.z * ahead) / texel) * texel
     l.target.position.set(x, 0, z)
-    l.position.set(x + SUN.x * 120, SUN.y * 120, z + SUN.z * 120)
+    l.position.set(x + SUN.x * 150, SUN.y * 150, z + SUN.z * 150)
   })
 
   return (

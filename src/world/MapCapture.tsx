@@ -50,6 +50,8 @@ export function MapCapture() {
     rt.texture.colorSpace = THREE.SRGBColorSpace
     const parent = world.root.parent
     const shadows = gl.shadowMap.enabled
+    const hidden = world.clouds.filter((c) => c.visible)
+    hidden.forEach((c) => (c.visible = false))
     scene.add(world.root)
     gl.shadowMap.enabled = false
     gl.setRenderTarget(rt)
@@ -59,6 +61,7 @@ export function MapCapture() {
     gl.setRenderTarget(null)
     gl.shadowMap.enabled = shadows
     parent?.add(world.root)
+    hidden.forEach((c) => (c.visible = true))
     rt.dispose()
 
     const canvas = document.createElement('canvas')

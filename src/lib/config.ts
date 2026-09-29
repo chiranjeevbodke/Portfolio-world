@@ -18,6 +18,7 @@ export const FLY = {
 // Scroll feel. Lenis eases a real page scroll; one fly-through second = PX_PER_SECOND of scrolling.
 export const SCROLL = {
   PX_PER_SECOND: 80, // whole route ~13,000 px
+  INTRO_SECONDS: 6, // the opening swoop from the aerial shot down to the street, in fly-through seconds
   LERP: 0.08, // Lenis wheel smoothing (lower = silkier)
   TOUCH_LERP: 0.075, // Lenis touch smoothing
   FOLLOW_RATE: 14, // camera catch-up with the eased scroll (1/s), just removes frame-to-frame noise
@@ -48,3 +49,6 @@ export const ROAM = {
   LOOK_PER_PX: 0.0035, // rad per pixel of drag
   OFFSET_RETURN_RATE: 0.9, // look-around on the route eases back as you scroll (per fly-through second scrolled)
 }
+
+// Draco decoder (self-hosted in public/draco/) for compressed .glb exports
+export const DRACO = '/draco/'

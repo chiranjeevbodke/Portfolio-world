@@ -26,7 +26,7 @@ export function initScroll() {
     const { path, mode, targetTime } = useStore.getState()
     if (!path || !lenis) return
     if (mode !== 'route') return
-    const t = Math.min(path.duration, lenis.scroll / SCROLL.PX_PER_SECOND)
+    const t = Math.min(path.duration, lenis.scroll / SCROLL.PX_PER_SECOND - SCROLL.INTRO_SECONDS)
     if (Math.abs(t - targetTime) > 1e-4) useStore.getState().setTargetTime(t)
   })
   return lenis
@@ -38,7 +38,7 @@ export function getLenis() {
 
 /** Jump the page scroll to fly-through time t (no animation; the camera does its own move). */
 export function scrollToTime(t: number) {
-  lenis?.scrollTo(t * SCROLL.PX_PER_SECOND, { immediate: true, force: true })
+  lenis?.scrollTo((t + SCROLL.INTRO_SECONDS) * SCROLL.PX_PER_SECOND, { immediate: true, force: true })
 }
 
 export function stopScroll() {
@@ -47,4 +47,9 @@ export function stopScroll() {
 
 export function startScroll() {
   lenis?.start()
+}
+
+/** Glide the page back to the very top (the aerial shot). */
+export function scrollToTop() {
+  lenis?.scrollTo(0, { duration: 2.4, force: true })
 }

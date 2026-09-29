@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { EYE_HEIGHT, FLY, ROAM, SCROLL } from '../lib/config'
+import { EYE_HEIGHT, FLY, LOOK, ROAM, SCROLL } from '../lib/config'
 import { live, useStore } from '../lib/store'
 import { input, rig } from '../lib/rig'
 
@@ -28,9 +28,10 @@ const shortAngle = (a: number, b: number) => {
 export function CameraRig() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const size = useThree((s) => s.size)
+  const scene = useThree((s) => s.scene)
   const look = useRef(new THREE.Vector3())
   const parallax = useRef({ x: 0, y: 0 })
-  const tmp = useRef({ target: new THREE.Vector3(), pos: new THREE.Vector3(), prevTime: 0 })
+  const tmp = useRef({ target: new THREE.Vector3(), pos: new THREE.Vector3(), base: new THREE.Vector3(), a: new THREE.Vector3(), c: new THREE.Vector3(), prevTime: 0 })
 
   useEffect(() => {
     rig.camera = camera
@@ -51,7 +52,7 @@ export function CameraRig() {
     const scrolled = Math.abs(live.time - tmp.current.prevTime) // fly-through seconds this frame
     tmp.current.prevTime = live.time
     const d = path.distAtTime(live.time)
-    live.progress = path.duration > 0 ? live.time / path.duration : 0
+    live.progress = path.duration > 0 ? Math.max(0, live.time) / path.duration : 0
     path.pointAt(d, pos)
     path.lookTargetAt(d, target)
     // smooth the viewing angle (not the look point, which the camera could overtake and flip)
@@ -72,15 +73,42 @@ export function CameraRig() {
     rig.routeYaw = routeYaw
     rig.routePitch = routePitch
 
+    // ---- opening: blend from the aerial shot (cam_intro in Blender) down to the start of the walk
+    let baseYaw = routeYaw, basePitch = routePitch
+    const basePos = tmp.current.base.copy(pos)
+    const intro = useStore.getState().world?.intro
+    if (live.time < 0 && intro) {
+      const k = THREE.MathUtils.clamp(1 + live.time / SCROLL.INTRO_SECONDS, 0, 1)
+      const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2
+      const t = performance.now() / 1000
+      const A = tmp.current.a.copy(intro.position)
+      A.x += Math.sin(t * 0.07) * 6 * (1 - e)
+      A.z += Math.cos(t * 0.05) * 4 * (1 - e)
+      const C = tmp.current.c.set(A.x * 0.35 + pos.x * 0.65, pos.y + (A.y - pos.y) * 0.3, A.z * 0.35 + pos.z * 0.65)
+      // quadratic bezier: glide forward and down, levelling out at eye height
+      basePos.set(0, 0, 0).addScaledVector(A, (1 - e) * (1 - e)).addScaledVector(C, 2 * (1 - e) * e).addScaledVector(pos, e * e)
+      const dx = intro.target.x - A.x, dy = intro.target.y - A.y, dz = intro.target.z - A.z
+      const aYaw = yawOf(dx, dz), aPitch = Math.atan2(dy, Math.hypot(dx, dz))
+      baseYaw = aYaw + shortAngle(aYaw, routeYaw) * e
+      basePitch = aPitch + (routePitch - aPitch) * e
+    }
+
+    // fog and haze open up with height, so the aerial view isn't washed out
+    if (scene.fog instanceof THREE.Fog) {
+      const h = Math.max(0, camera.position.y - 2)
+      scene.fog.near = LOOK.FOG_NEAR + h * 3
+      scene.fog.far = LOOK.FOG_FAR + h * 7
+    }
+
     if (mode === 'route') {
       // drag-to-look offset eases back to the path once the visitor scrolls again
       // (in proportion to how far they scroll, so tiny scroll noise doesn't cancel a look-around)
       const k = Math.exp(-ROAM.OFFSET_RETURN_RATE * scrolled)
       rig.offYaw *= k
       rig.offPitch *= k
-      rig.pos.copy(pos)
-      rig.yaw = routeYaw + rig.offYaw
-      rig.pitch = THREE.MathUtils.clamp(routePitch + rig.offPitch, -MAX_PITCH, MAX_PITCH)
+      rig.pos.copy(basePos)
+      rig.yaw = baseYaw + rig.offYaw
+      rig.pitch = THREE.MathUtils.clamp(basePitch + rig.offPitch, -MAX_PITCH, MAX_PITCH)
     } else if (mode === 'free') {
       const f = rig.free
       const k = input.keys
@@ -109,12 +137,12 @@ export function CameraRig() {
       // camera move: blend from the captured pose to the (live) route pose, with an optional hop
       const m = rig.move
       const t = m.k
-      rig.pos.lerpVectors(m.from, pos, t)
+      rig.pos.lerpVectors(m.from, basePos, t)
       rig.pos.y += Math.sin(Math.PI * t) * m.arc
       const lookDown = Math.sin(Math.PI * t) * (m.arc > 0 ? 0.35 : 0)
-      let toYaw = routeYaw, toPitch = routePitch
+      let toYaw = baseYaw, toPitch = basePitch
       if (m.lookAt) {
-        const dx = m.lookAt.x - pos.x, dy = m.lookAt.y - pos.y, dz = m.lookAt.z - pos.z
+        const dx = m.lookAt.x - basePos.x, dy = m.lookAt.y - basePos.y, dz = m.lookAt.z - basePos.z
         toYaw = yawOf(dx, dz)
         toPitch = Math.atan2(dy, Math.hypot(dx, dz))
       }

@@ -8,6 +8,19 @@ A stylised low-poly Mumbai neighbourhood you explore at street level. The world 
 
 Replace `world.glb` with a detailed export that keeps those names and everything keeps working.
 
+## Rebuilding the world in Blender
+
+1. New empty file → run `blender/01_mumbai_world_blockout_v3.py` (layout, frames, route)
+2. Same file → run `blender/03_mumbai_world_detail.py` (buildings, trees, vehicles, animals, sea, sky, markers)
+3. Export `public/models/world.glb`: glTF 2.0, +Y up, **Custom Properties** on, **Compression (Draco)** on
+4. New empty file → run `blender/04_street_life.py`, export `public/models/life.glb`
+   with **Custom Properties** on and **Animation mode: NLA Tracks** (animated taxis, autos, bus, dogs, cow, pigeons, crows, kites)
+
+Markers the site reads from `world.glb` (all optional):
+`cam_intro` / `cam_intro_target` (opening aerial shot), `life_<kind>__<id>` (an animal looping on a spot),
+`lifepath_<name>_00, _01 …` (a loop that `count` copies of `kind` travel at `speed` m/s), `cloud_*` (drifting clouds).
+`public/models/world_blockout.glb` is the original blockout, kept for reference.
+
 ## Live site
 
 Deployed on Netlify: https://chiranjeev-portfolio-world.netlify.app (every push to the branch → redeploy).
@@ -38,10 +51,12 @@ npm run preview    # serve the production build
 - `src/world/Frames.tsx` artwork on every frame, focus highlight, lazy image loading, click picking
 - `src/content/projects.ts` reads `content_map.json` + `content/projects/*/project.json`
 - `src/ui/ProjectPanel.tsx`, `src/ui/WorkPage.tsx` project page and `/work` grid
+- `src/world/Life.tsx` places and animates street life from `life.glb` on the markers, drifts clouds
 - `src/lib/config.ts` all tuning numbers (speeds, scroll feel, sky and sun colours)
 
 ## Controls
 
+- The page opens on an aerial shot; the first scroll swoops down into the chowk
 - Scroll / swipe up-down / PageUp, PageDown, Space: walk the route (reverse to go back)
 - Click or tap a hoarding (or press Enter when its label shows): open the project
 - Drag (mouse) or swipe sideways (touch): look around

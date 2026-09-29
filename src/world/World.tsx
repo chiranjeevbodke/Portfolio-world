@@ -5,11 +5,12 @@ import { RoutePath } from '../lib/routePath'
 import { WalkGrid } from '../lib/walkGrid'
 import { computeZones } from '../lib/zones'
 import { useStore } from '../lib/store'
+import { DRACO } from '../lib/config'
 
 export const WORLD_URL = '/models/world.glb'
 
 export function World() {
-  const gltf = useGLTF(WORLD_URL)
+  const gltf = useGLTF(WORLD_URL, DRACO)
   const parsed = useMemo(() => parseWorld(gltf.scene), [gltf.scene])
   const path = useMemo(() => {
     if (parsed.route.length < 2) {
@@ -31,4 +32,4 @@ export function World() {
   return <primitive object={parsed.root} />
 }
 
-useGLTF.preload(WORLD_URL)
+useGLTF.preload(WORLD_URL, DRACO)

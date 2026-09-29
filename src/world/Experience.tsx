@@ -10,6 +10,7 @@ import { Sky } from './Sky'
 import { Lights } from './Lights'
 import { CameraRig } from './CameraRig'
 import { Frames } from './Frames'
+import { Life } from './Life'
 import { useWorldInput } from './useWorldInput'
 import { MapCapture } from './MapCapture'
 import { Overlay } from '../ui/Overlay'
@@ -43,14 +44,14 @@ export default function Experience({ paused, onSlow }: { paused: boolean; onSlow
 
   return (
     <>
-      <div className="scroll-track" style={{ height: duration ? `calc(${Math.ceil(duration * SCROLL.PX_PER_SECOND)}px + 100vh)` : '100vh' }} />
+      <div className="scroll-track" style={{ height: duration ? `calc(${Math.ceil((duration + SCROLL.INTRO_SECONDS) * SCROLL.PX_PER_SECOND)}px + 100vh)` : '100vh' }} />
       <div ref={setEl} className="experience" aria-label="3D neighbourhood. Scroll to walk; click a hoarding to open a project.">
         <Canvas
           dpr={dpr}
           flat
           shadows="percentage"
           frameloop={paused ? 'never' : 'always'}
-          camera={{ near: 0.1, far: 700, position: [6, 1.7, 10] }}
+          camera={{ near: 0.1, far: 1000, position: [6, 1.7, 10] }}
           gl={{ antialias: !isCoarse || maxDpr < 1.5, powerPreference: 'high-performance' }}
           onCreated={({ scene }) => {
             scene.fog = fog
@@ -68,6 +69,9 @@ export default function Experience({ paused, onSlow }: { paused: boolean; onSlow
             <World />
           </Suspense>
           <Frames />
+          <Suspense fallback={null}>
+            <Life />
+          </Suspense>
           <CameraRig />
           <MapCapture />
         </Canvas>

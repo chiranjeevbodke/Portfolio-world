@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { SCROLL } from './config'
 import type { ParsedWorld } from '../world/parseWorld'
 import type { RoutePath } from './routePath'
 import type { WalkGrid } from './walkGrid'
@@ -39,11 +40,11 @@ export const useStore = create<State>((set, get) => ({
   zones: [],
   map: null,
   mode: 'route',
-  targetTime: 0,
+  targetTime: -SCROLL.INTRO_SECONDS,
   hasScrolled: false,
   setWorld: (world, path, walk, zones) => set({ world, path, walk, zones }),
   setMap: (map) => set({ map }),
-  setTargetTime: (t) => set({ targetTime: t, ...(t > 0.3 && !get().hasScrolled ? { hasScrolled: true } : {}) }),
+  setTargetTime: (t) => set({ targetTime: t, ...(t > 0.3 - SCROLL.INTRO_SECONDS && !get().hasScrolled ? { hasScrolled: true } : {}) }),
   setMode: (mode) => set({ mode }),
   framesReady: false,
   setFramesReady: (framesReady) => set({ framesReady }),
@@ -53,7 +54,7 @@ export const useStore = create<State>((set, get) => ({
 
 /** Per-frame camera values, written by the rig and read by UI without React re-renders. */
 export const live = {
-  time: 0, // current fly-through time (seconds)
+  time: -SCROLL.INTRO_SECONDS, // current fly-through time (seconds); negative = the opening swoop
   progress: 0, // 0..1 along the route
   x: 0,
   z: 0,

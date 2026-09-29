@@ -43,8 +43,8 @@ export function Lights({ shadowSize }: { shadowSize: number }) {
         intensity={LOOK.SUN_INTENSITY}
         castShadow
         shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.04}
+        shadow-bias={-0.0008}
+        shadow-normalBias={0.12}
       />
     </>
   )

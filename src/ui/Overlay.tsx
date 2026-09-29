@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useProgress } from '@react-three/drei'
 import { live, useStore } from '../lib/store'
+import { returnToRoute } from '../lib/rig'
+import { MiniMap } from './MiniMap'
+import { Joystick } from './Joystick'
 
 function Loader() {
   const { progress, active } = useProgress()
@@ -35,7 +38,7 @@ function RouteProgress() {
 }
 
 function ScrollHint() {
-  const show = useStore((s) => !!s.path && !s.hasScrolled)
+  const show = useStore((s) => !!s.path && !s.hasScrolled && s.mode === 'route')
   return (
     <div className={`scroll-hint ${show ? '' : 'is-hidden'}`} aria-hidden={!show}>
       <span className="scroll-hint__icon" />
@@ -44,7 +47,17 @@ function ScrollHint() {
   )
 }
 
+function BackToWalk() {
+  const free = useStore((s) => s.mode === 'free')
+  return (
+    <button className={`back-to-walk ${free ? '' : 'is-hidden'}`} onClick={returnToRoute} tabIndex={free ? 0 : -1}>
+      Back to the walk
+    </button>
+  )
+}
+
 export function Overlay() {
+  const ready = useStore((s) => !!s.path)
   return (
     <>
       <header className="brand">
@@ -53,6 +66,13 @@ export function Overlay() {
       </header>
       <RouteProgress />
       <ScrollHint />
+      {ready && (
+        <>
+          <MiniMap />
+          <Joystick />
+          <BackToWalk />
+        </>
+      )}
       <Loader />
     </>
   )

@@ -7,13 +7,14 @@ import { World } from './World'
 import { Sky } from './Sky'
 import { Lights } from './Lights'
 import { CameraRig } from './CameraRig'
-import { useScrollInput } from './useScrollInput'
+import { useWorldInput } from './useWorldInput'
+import { MapCapture } from './MapCapture'
 
 const isCoarse = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
 export function Experience() {
   const [el, setEl] = useState<HTMLDivElement | null>(null)
-  useScrollInput(el)
+  useWorldInput(el)
 
   // auto-lower the pixel ratio when frames drop, raise it again when there is headroom
   const maxDpr = Math.min(window.devicePixelRatio || 1, isCoarse ? 1.75 : 2)
@@ -43,6 +44,7 @@ export function Experience() {
           <World />
         </Suspense>
         <CameraRig />
+        <MapCapture />
       </Canvas>
     </div>
   )

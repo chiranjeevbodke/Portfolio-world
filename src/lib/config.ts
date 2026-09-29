@@ -39,3 +39,12 @@ export const LOOK = {
   FOG_NEAR: 90,
   FOG_FAR: 340,
 }
+
+// Free roam
+export const ROAM = {
+  WALK_SPEED: 4.0, // m/s
+  RUN_SPEED: 8.0, // m/s with Shift
+  TURN_SPEED: 1.9, // rad/s (arrow keys, joystick left/right)
+  LOOK_PER_PX: 0.0035, // rad per pixel of drag
+  OFFSET_RETURN_RATE: 2.5, // how fast a look-around on the route eases back while scrolling (1/s)
+}

@@ -2,6 +2,8 @@ import { useEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { parseWorld } from './parseWorld'
 import { RoutePath } from '../lib/routePath'
+import { WalkGrid } from '../lib/walkGrid'
+import { computeZones } from '../lib/zones'
 import { useStore } from '../lib/store'
 
 export const WORLD_URL = '/models/world.glb'
@@ -16,10 +18,15 @@ export function World() {
     }
     return new RoutePath(parsed.route, parsed.slots.map((s) => s.center))
   }, [parsed])
+  const walk = useMemo(() => {
+    const grid = WalkGrid.build([...parsed.scenery, ...parsed.slots.flatMap((s) => s.meshes)])
+    if (!grid) console.warn('No ground found in world.glb; collisions are disabled.')
+    return grid
+  }, [parsed])
 
   useEffect(() => {
-    if (path) useStore.getState().setWorld(parsed, path)
-  }, [parsed, path])
+    if (path) useStore.getState().setWorld(parsed, path, walk, computeZones(parsed.slots, path))
+  }, [parsed, path, walk])
 
   return <primitive object={parsed.root} />
 }

@@ -56,8 +56,8 @@ html, body, #root {
 .route-progress {
   position: fixed;
   right: calc(10px + env(safe-area-inset-right));
-  top: 50%;
-  height: 28vh;
+  top: 58%;
+  height: 24vh;
   width: 3px;
   transform: translateY(-50%);
   border-radius: 3px;
@@ -140,4 +140,143 @@ html, body, #root {
 
 @media (prefers-reduced-motion: reduce) {
   .scroll-hint__icon::after { animation: none; }
+}
+
+.experience.is-dragging { cursor: grabbing; }
+
+/* ---------- mini-map (top right) */
+.minimap {
+  position: fixed;
+  top: calc(var(--gutter) + env(safe-area-inset-top));
+  right: calc(var(--gutter) + env(safe-area-inset-right));
+  width: 150px;
+  border-radius: var(--radius);
+  background: rgba(255, 248, 240, 0.9);
+  box-shadow: 0 8px 28px rgba(80, 40, 20, 0.18);
+  padding: 5px;
+  z-index: 10;
+}
+.minimap__inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.minimap__inner img { display: block; width: 100%; height: 100%; user-select: none; }
+.minimap__zone {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 248, 240, 0.92);
+  color: var(--ink);
+  font: 600 10px/1.2 var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(60, 30, 10, 0.2);
+  transition: background 0.2s, color 0.2s;
+}
+.minimap__zone:hover, .minimap__zone:focus-visible { background: var(--ink); color: var(--paper); outline: none; }
+.minimap__me {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+.minimap__me::before { /* view cone */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 13px solid rgba(217, 100, 58, 0.45);
+  transform: translateX(-50%);
+}
+.minimap__me::after { /* dot */
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px #fff;
+}
+@media (min-width: 701px) { .minimap { width: 230px; } .minimap__zone { font-size: 11px; } }
+@media (max-width: 700px) {
+  .minimap { width: 104px; transition: width 0.3s ease; }
+  .minimap .minimap__zone { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .minimap.is-open { width: min(290px, calc(100vw - 2 * var(--gutter))); z-index: 30; }
+  .minimap.is-open .minimap__zone { opacity: 1; pointer-events: auto; font-size: 12px; padding: 5px 9px; }
+}
+.minimap__close {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 18px/1 var(--font);
+  cursor: pointer;
+}
+
+/* ---------- joystick (bottom left) */
+.joystick {
+  position: fixed;
+  left: calc(20px + env(safe-area-inset-left));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  background: rgba(255, 248, 240, 0.35);
+  border: 2px solid rgba(255, 248, 240, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  z-index: 10;
+}
+.joystick__knob {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 248, 240, 0.95);
+  box-shadow: 0 4px 14px rgba(80, 40, 20, 0.25);
+  pointer-events: none;
+  transition: transform 0.12s ease-out;
+}
+.joystick:active .joystick__knob { transition: none; }
+@media (pointer: fine) { .joystick { width: 96px; height: 96px; } .joystick__knob { width: 42px; height: 42px; } }
+
+/* ---------- back to the walk */
+.back-to-walk {
+  position: fixed;
+  left: 50%;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 14px var(--font);
+  box-shadow: 0 8px 24px rgba(40, 20, 10, 0.3);
+  cursor: pointer;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 10;
+}
+.back-to-walk.is-hidden { opacity: 0; transform: translate(-50%, 12px); pointer-events: none; }
+@media (max-width: 700px) {
+  .back-to-walk { left: auto; right: calc(var(--gutter) + env(safe-area-inset-right)); bottom: calc(52px + env(safe-area-inset-bottom)); transform: none; }
+  .back-to-walk.is-hidden { transform: translateY(12px); }
 }

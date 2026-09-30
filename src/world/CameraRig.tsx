@@ -124,13 +124,26 @@ export function CameraRig() {
         mx /= len
         mz /= len
       }
-      const speed = (k.has('ShiftLeft') || k.has('ShiftRight') ? ROAM.RUN_SPEED : ROAM.WALK_SPEED) * dt
-      if (len > 0.01) {
-        if (walk) walk.move(f.pos, mx * speed, mz * speed)
-        else f.pos.set(f.pos.x + mx * speed, EYE_HEIGHT, f.pos.z + mz * speed)
+      // walking: ease into and out of the step, a little head bob and sway while moving
+      const top = k.has('ShiftLeft') || k.has('ShiftRight') ? ROAM.RUN_SPEED : ROAM.WALK_SPEED
+      const acc = 1 - Math.exp(-(len > 0.01 ? ROAM.ACCEL : ROAM.DECEL) * dt)
+      f.vel.x += (mx * top - f.vel.x) * acc
+      f.vel.y += (mz * top - f.vel.y) * acc
+      const v = Math.hypot(f.vel.x, f.vel.y)
+      if (v > 0.02) {
+        const before = f.pos.x + f.pos.z
+        if (walk) walk.move(f.pos, f.vel.x * dt, f.vel.y * dt)
+        else f.pos.set(f.pos.x + f.vel.x * dt, EYE_HEIGHT, f.pos.z + f.vel.y * dt)
+        if (f.pos.x + f.pos.z === before) f.vel.set(0, 0) // walked into a wall
       }
+      f.step += (v * dt * Math.PI) / ROAM.STRIDE
+      const amp = Math.min(1, v / ROAM.WALK_SPEED)
+      f.bob += (amp - f.bob) * (1 - Math.exp(-8 * dt))
       f.pos.y = EYE_HEIGHT
       rig.pos.copy(f.pos)
+      rig.pos.y += Math.abs(Math.sin(f.step)) * ROAM.BOB * f.bob - ROAM.BOB * 0.5 * f.bob
+      rig.pos.x += Math.cos(f.yaw) * Math.sin(f.step) * ROAM.SWAY * f.bob
+      rig.pos.z -= Math.sin(f.yaw) * Math.sin(f.step) * ROAM.SWAY * f.bob
       rig.yaw = f.yaw
       rig.pitch = f.pitch
     } else {

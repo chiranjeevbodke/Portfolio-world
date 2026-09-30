@@ -23,7 +23,7 @@ export const rig = {
   offYaw: 0,
   offPitch: 0,
   /** free-roam pose */
-  free: { pos: new THREE.Vector3(), yaw: 0, pitch: 0 },
+  free: { pos: new THREE.Vector3(), yaw: 0, pitch: 0, vel: new THREE.Vector2(), step: 0, bob: 0 },
   /** camera move (free → route, map jumps) */
   move: { from: new THREE.Vector3(), fromYaw: 0, fromPitch: 0, k: 0, arc: 0, lookAt: null as THREE.Vector3 | null },
   /** route heading the rig computed last frame (used to turn a final gaze into a look offset) */
@@ -41,6 +41,7 @@ export function enterFree() {
   rig.free.pos.set(rig.pos.x, EYE_HEIGHT, rig.pos.z)
   rig.free.yaw = rig.yaw
   rig.free.pitch = rig.pitch
+  rig.free.vel.set(0, 0)
   rig.offYaw = rig.offPitch = 0
   stopScroll()
   setMode('free')
@@ -113,4 +114,4 @@ export function goToSlot(slotId: string, opts: { duration?: number } = {}) {
   moveToRouteTime(path.timeAtDist(path.bestViewDist(slot.center, slot.normal, slot.size)), { ...opts, lookAt: slot.center })
 }
 
-if (import.meta.env.DEV) Object.assign(window, { __rig: { goToSlot, goToZone, moveToRouteTime } })
+if (import.meta.env.DEV) Object.assign(window, { __rig: { goToSlot, goToZone, moveToRouteTime, enterFree, rig } })

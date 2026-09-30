@@ -137,6 +137,49 @@ export class WalkGrid {
     return new WalkGrid(minX, minZ, w, h, walk)
   }
 
+  /** Keep only the walkable areas connected to one of the seeds (drops the insides of closed buildings). */
+  keepReachable(seeds: { x: number; z: number }[]) {
+    const seen = new Uint8Array(this.w * this.h)
+    const stack: number[] = []
+    for (const s of seeds) {
+      const c = this.nearestFree(s.x, s.z, 4)
+      if (!c) continue
+      const k = Math.floor((c.z - this.minZ) / this.cell) * this.w + Math.floor((c.x - this.minX) / this.cell)
+      if (!seen[k]) (seen[k] = 1), stack.push(k)
+    }
+    if (!stack.length) return
+    while (stack.length) {
+      const k = stack.pop()!
+      const i = k % this.w, j = (k - i) / this.w
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ii = i + di, jj = j + dj
+        if (ii < 0 || jj < 0 || ii >= this.w || jj >= this.h) continue
+        const n = jj * this.w + ii
+        if (!seen[n] && this.walk[n]) (seen[n] = 1), stack.push(n)
+      }
+    }
+    this.walk.set(seen)
+  }
+
+  /** Centre of the closest walkable cell within maxDist metres, or null. */
+  nearestFree(x: number, z: number, maxDist: number): { x: number; z: number } | null {
+    if (this.canStand(x, z)) return { x, z }
+    const i0 = Math.floor((x - this.minX) / this.cell), j0 = Math.floor((z - this.minZ) / this.cell)
+    const R = Math.ceil(maxDist / this.cell)
+    let best: { x: number; z: number } | null = null, bestD = Infinity
+    for (let dj = -R; dj <= R; dj++) {
+      for (let di = -R; di <= R; di++) {
+        const d = di * di + dj * dj
+        if (d >= bestD || d > R * R) continue
+        const i = i0 + di, j = j0 + dj
+        if (i < 0 || j < 0 || i >= this.w || j >= this.h || !this.walk[j * this.w + i]) continue
+        bestD = d
+        best = { x: this.minX + (i + 0.5) * this.cell, z: this.minZ + (j + 0.5) * this.cell }
+      }
+    }
+    return best
+  }
+
   canStand(x: number, z: number) {
     const i = Math.floor((x - this.minX) / this.cell), j = Math.floor((z - this.minZ) / this.cell)
     return i >= 0 && j >= 0 && i < this.w && j < this.h && this.walk[j * this.w + i] === 1

@@ -43,8 +43,13 @@ export const LOOK = {
 
 // Free roam
 export const ROAM = {
-  WALK_SPEED: 4.0, // m/s
-  RUN_SPEED: 8.0, // m/s with Shift
+  WALK_SPEED: 3.2, // m/s
+  RUN_SPEED: 6.5, // m/s with Shift
+  ACCEL: 7, // how quickly you get up to speed (1/s)
+  DECEL: 9, // how quickly you stop (1/s)
+  STRIDE: 0.8, // metres per step (head bob rhythm)
+  BOB: 0.055, // head bob height (m)
+  SWAY: 0.025, // side-to-side sway (m)
   TURN_SPEED: 1.9, // rad/s (arrow keys, joystick left/right)
   LOOK_PER_PX: 0.0035, // rad per pixel of drag
   OFFSET_RETURN_RATE: 0.9, // look-around on the route eases back as you scroll (per fly-through second scrolled)

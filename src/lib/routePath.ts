@@ -1,3 +1,4 @@
+import type { WalkGrid } from './walkGrid'
 import * as THREE from 'three'
 import { EYE_HEIGHT, FLY } from './config'
 
@@ -26,7 +27,36 @@ export class RoutePath {
   readonly duration: number
   private slots: THREE.Vector3[]
 
-  constructor(points: THREE.Vector3[], slotCentres: THREE.Vector3[]) {
+  /** Push blocked samples onto open ground, then smooth the pushes so the path bends gently. */
+  private static keepClear(dense: THREE.Vector3[], grid: WalkGrid) {
+    const off = dense.map((p) => {
+      const c = grid.nearestFree(p.x, p.z, 4)
+      return c ? [c.x - p.x, c.z - p.z] : [0, 0]
+    })
+    // widest push nearby (so the path stays out, not half-way), then a moving average for the bend
+    const R = 8
+    const hold = off.map((_, i) => {
+      let best = off[i]
+      for (let k = Math.max(0, i - R); k <= Math.min(off.length - 1, i + R); k++) {
+        if (Math.hypot(off[k][0], off[k][1]) > Math.hypot(best[0], best[1])) best = off[k]
+      }
+      return best
+    })
+    for (let i = 0; i < dense.length; i++) {
+      let sx = 0, sz = 0, n = 0
+      for (let k = Math.max(0, i - R); k <= Math.min(dense.length - 1, i + R); k++) (sx += hold[k][0]), (sz += hold[k][1]), n++
+      dense[i].x += sx / n
+      dense[i].z += sz / n
+    }
+    // smoothing can cut a corner back into something: settle those points on open ground
+    for (const p of dense) {
+      const c = grid.nearestFree(p.x, p.z, 1)
+      if (c) (p.x = c.x), (p.z = c.z)
+    }
+  }
+
+  /** `clear`, when given, moves any part of the path that runs through an object to the nearest open ground. */
+  constructor(points: THREE.Vector3[], slotCentres: THREE.Vector3[], clear?: WalkGrid | null) {
     const pts = points.map((p) => new THREE.Vector3(p.x, EYE_HEIGHT, p.z))
     this.slots = slotCentres
     const first = pts[0].clone().multiplyScalar(2).sub(pts[1])
@@ -39,6 +69,7 @@ export class RoutePath {
       }
     }
     this.dense.push(pts[pts.length - 1].clone())
+    if (clear) RoutePath.keepClear(this.dense, clear)
     for (let i = 1; i < this.dense.length; i++) {
       this.dist.push(this.dist[i - 1] + this.dense[i].distanceTo(this.dense[i - 1]))
     }

@@ -524,3 +524,15 @@ a { color: inherit; }
 .debug__table th, .debug__table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .debug__table th { position: sticky; top: 58px; background: var(--paper-2); font-weight: 600; }
 .debug__table code { font-size: 12px; }
+
+/* game-style walking on desktop (pointer locked) */
+.crosshair, .lock-hint { display: none; }
+.is-locked .crosshair {
+  display: block; position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  border-radius: 50%; background: #fff8ef; box-shadow: 0 0 0 1.5px rgba(43, 33, 28, 0.55); pointer-events: none; z-index: 5;
+}
+.is-locked .lock-hint {
+  display: block; position: fixed; left: 50%; top: calc(16px + env(safe-area-inset-top)); transform: translateX(-50%);
+  margin: 0; padding: 6px 12px; border-radius: 999px; background: rgba(43, 33, 28, 0.55); color: #fff8ef;
+  font-size: 12px; white-space: nowrap; pointer-events: none; z-index: 5;
+}

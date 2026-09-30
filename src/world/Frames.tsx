@@ -19,6 +19,8 @@ export type FrameEntry = {
   glow: THREE.Mesh
   top: THREE.Vector3
   radius: number // how close you need to be for the frame to take focus
+  face: THREE.Vector3 // the side the artwork reads correctly from (towards the route)
+  mirror: boolean // artwork printed on the back of the model's frame so it reads from the route
   imageUrl: string | null
   imageState: 'none' | 'loading' | 'done'
   highlight: number
@@ -57,20 +59,43 @@ function posterFor(slot: Slot, a: SlotAssignment): PosterSpec {
   return { aspect: slot.aspect, bg: '#ebe2d3', fg: '#6f6258', kicker: 'This space', title: 'Coming soon', footer: id, muted: true }
 }
 
-function coverFit(tex: THREE.Texture, imgAspect: number, frameAspect: number) {
+function coverFit(tex: THREE.Texture, imgAspect: number, frameAspect: number, mirror: boolean) {
   tex.repeat.set(1, 1)
   tex.offset.set(0, 0)
   if (imgAspect > frameAspect) {
     tex.repeat.x = frameAspect / imgAspect
     tex.offset.x = (1 - tex.repeat.x) / 2
-  } else {
+  } else if (imgAspect < frameAspect) {
     tex.repeat.y = imgAspect / frameAspect
     tex.offset.y = (1 - tex.repeat.y) / 2
   }
+  // seen from behind, a double-sided frame shows the image flipped; flip it back
+  if (mirror) {
+    tex.offset.x += tex.repeat.x
+    tex.repeat.x = -tex.repeat.x
+  }
+}
+
+/** Does the visitor on the route see this frame from its back? Decided by the side they approach it from. */
+function seenFromBack(slot: Slot, path: { dense: THREE.Vector3[] } | null) {
+  if (!path) return false
+  const c = slot.center, n = slot.normal
+  let vote = 0
+  for (let i = 1; i < path.dense.length; i++) {
+    const p = path.dense[i], q = path.dense[i - 1]
+    const dx = p.x - c.x, dz = p.z - c.z
+    const d = Math.hypot(dx, dz)
+    if (d > 25 || d < 0.5) continue
+    // only where the frame is ahead of the visitor (that is when it gets read)
+    if ((c.x - p.x) * (p.x - q.x) + (c.z - p.z) * (p.z - q.z) <= 0) continue
+    vote += Math.sign(dx * n.x + dz * n.z) / d
+  }
+  return vote < 0
 }
 
 export function Frames() {
   const world = useStore((s) => s.world)
+  const path = useStore((s) => s.path)
   const gl = useThree((s) => s.gl)
 
   useEffect(() => {
@@ -84,8 +109,10 @@ export function Frames() {
       frames.length = 0
       for (const slot of world.slots) {
         const a = assignmentFor(slot.id)
+        const mirror = seenFromBack(slot, path)
         const tex = new THREE.CanvasTexture(drawPoster(posterFor(slot, a)))
         tex.flipY = false // glTF UVs
+        if (mirror) coverFit(tex, 1, 1, true)
         tex.colorSpace = THREE.SRGBColorSpace
         tex.anisotropy = aniso
         created.push(tex)
@@ -110,7 +137,7 @@ export function Frames() {
         const glow = new THREE.Mesh(g, glowMat)
         src.updateWorldMatrix(true, false)
         src.matrixWorld.decompose(glow.position, glow.quaternion, glow.scale)
-        glow.position.addScaledVector(slot.normal, -0.03)
+        glow.position.addScaledVector(slot.normal, mirror ? 0.03 : -0.03)
         glow.renderOrder = -0.5
         glow.visible = false
         world.root.add(glow)
@@ -129,6 +156,8 @@ export function Frames() {
           glow,
           top: new THREE.Vector3(slot.center.x, box.max.y, slot.center.z),
           radius: 9 + size * 1.1,
+          face: mirror ? slot.normal.clone().negate() : slot.normal,
+          mirror,
           imageUrl,
           imageState: imageUrl ? 'none' : 'done',
           highlight: 0,
@@ -142,7 +171,7 @@ export function Frames() {
       frames.length = 0
       created.forEach((d) => d.dispose())
     }
-  }, [world, gl])
+  }, [world, path, gl])
 
   useFrame(({ camera }, dt) => {
     if (!frames.length) return
@@ -156,7 +185,7 @@ export function Frames() {
       if (d > f.radius) continue
       to.divideScalar(d)
       const inView = to.dot(fwd)
-      const facing = -to.dot(f.slot.normal) // artwork faces the visitor
+      const facing = -to.dot(f.face) // artwork faces the visitor
       if (inView < FOCUS_ANGLE || facing < 0.05) continue
       const score = inView * (1 - d / f.radius)
       if (score > bestScore) {
@@ -204,7 +233,7 @@ export function Frames() {
             tex.colorSpace = THREE.SRGBColorSpace
             tex.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy())
             const img = tex.image as HTMLImageElement
-            coverFit(tex, img.width / img.height, f.slot.aspect)
+            coverFit(tex, img.width / img.height, f.slot.aspect, f.mirror)
             for (const m of f.materials) {
               m.map?.dispose()
               m.map = tex

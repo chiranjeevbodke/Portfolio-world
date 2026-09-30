@@ -32,19 +32,22 @@ function introFor(parsed: ParsedWorld, path: RoutePath) {
 function WorldModel({ url }: { url: string }) {
   const gltf = useGLTF(url, DRACO)
   const parsed = useMemo(() => parseWorld(gltf.scene), [gltf.scene])
+  const walk = useMemo(() => {
+    const grid = WalkGrid.build(parsed.colliders)
+    if (!grid) console.warn('No ground found in the city model; collisions are disabled.')
+    // only the streets you can actually reach from the route (not the insides of closed buildings)
+    else grid.keepReachable(parsed.route)
+    return grid
+  }, [parsed])
   const path = useMemo(() => {
     if (parsed.route.length < 2) {
       console.error(`${url} has no route_XX empties; scroll movement is disabled.`)
       return null
     }
     // always rebuilt from the route_XX empties in the loaded file
-    return new RoutePath(parsed.route, parsed.slots.map((s) => s.center))
-  }, [parsed, url])
-  const walk = useMemo(() => {
-    const grid = WalkGrid.build(parsed.colliders)
-    if (!grid) console.warn('No ground found in the city model; collisions are disabled.')
-    return grid
-  }, [parsed])
+    // the path steers around anything standing on it (stalls, benches) instead of passing through
+    return new RoutePath(parsed.route, parsed.slots.map((s) => s.center), walk)
+  }, [parsed, url, walk])
 
   useEffect(() => {
     if (!path) return

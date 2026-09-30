@@ -14,6 +14,7 @@ import { frames, pickFrame, pointer } from './Frames'
 
 const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
 const TAP_SLOP = 8
+const FINE = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
 
 function lookBy(dxPx: number, dyPx: number) {
   const mode = useStore.getState().mode
@@ -56,11 +57,36 @@ export function useWorldInput(target: HTMLElement | null) {
 
     const onDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return
+      // locked: a click opens whatever the crosshair is on
+      if (locked()) {
+        openFrame(useStore.getState().focusId)
+        return
+      }
       if (drag) return
       drag = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, axis: null, type: e.pointerType }
       dragId = e.pointerId
     }
+    // desktop walking feels like a game: mouse look with the pointer locked (Esc gives it back)
+    const locked = () => document.pointerLockElement === target
+    const lock = () => {
+      if (!FINE || locked()) return
+      try {
+        const r = target.requestPointerLock() as unknown as Promise<void> | undefined
+        r?.catch?.(() => {})
+      } catch {
+        /* not supported */
+      }
+    }
+    const onLockChange = () => document.documentElement.classList.toggle('is-locked', locked())
+    const unsubMode = useStore.subscribe((s, prev) => {
+      if (s.mode !== prev.mode && s.mode !== 'free' && locked()) document.exitPointerLock()
+    })
+
     const onMove = (e: PointerEvent) => {
+      if (locked()) {
+        if (useStore.getState().mode === 'free') lookBy(e.movementX * 0.75, e.movementY * 0.75)
+        return
+      }
       if (e.pointerType === 'mouse') {
         input.mouse.x = (e.clientX / window.innerWidth) * 2 - 1
         input.mouse.y = (e.clientY / window.innerHeight) * 2 - 1
@@ -113,6 +139,7 @@ export function useWorldInput(target: HTMLElement | null) {
       if (MOVE_KEYS.has(e.code)) {
         input.keys.add(e.code)
         enterFree()
+        lock()
         e.preventDefault()
         return
       }
@@ -135,7 +162,11 @@ export function useWorldInput(target: HTMLElement | null) {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('blur', onBlur)
+    document.addEventListener('pointerlockchange', onLockChange)
     return () => {
+      unsubMode()
+      document.removeEventListener('pointerlockchange', onLockChange)
+      if (locked()) document.exitPointerLock()
       window.removeEventListener('wheel', onWheel)
       target.removeEventListener('pointerdown', onDown)
       window.removeEventListener('pointermove', onMove)

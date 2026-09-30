@@ -173,9 +173,15 @@ function FrameLabel() {
 function BackToWalk() {
   const free = useStore((s) => s.mode === 'free')
   return (
-    <button className={`back-to-walk ${free ? '' : 'is-hidden'}`} onClick={returnToRoute} tabIndex={free ? 0 : -1}>
-      Back to the walk
-    </button>
+    <>
+      <button className={`back-to-walk ${free ? '' : 'is-hidden'}`} onClick={returnToRoute} tabIndex={free ? 0 : -1}>
+        Back to the walk
+      </button>
+      <div className="crosshair" aria-hidden />
+      <p className="lock-hint" aria-hidden>
+        Mouse to look · WASD to walk · Shift to run · Click a hoarding · Esc frees the mouse
+      </p>
+    </>
   )
 }
 

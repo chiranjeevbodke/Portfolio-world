@@ -142,6 +142,8 @@ export function assignmentFor(slotId: string): SlotAssignment {
   return plan.get(slotId) ?? assignments.get(slotId) ?? { kind: 'spare' }
 }
 
+/** true: spare frames rotate through all projects; false: they say "Coming soon" */
+export const AUTO_FILL_SPARE = false
 export const SPARE_MIN_GAP = 25 // metres: the same brand never shows twice closer than this
 
 /**
@@ -165,6 +167,8 @@ export function planFrames(slots: { id: string; center: { x: number; z: number }
       }
     } else spare.push(s)
   }
+  // spare frames show "Coming soon" so every brand stays in its own area (flip to fill them)
+  if (!AUTO_FILL_SPARE) return plan
   // deterministic order: sweep the city west to east, north to south
   spare.sort((a, b) => a.center.x - b.center.x || a.center.z - b.center.z || a.id.localeCompare(b.id))
   let turn = 0

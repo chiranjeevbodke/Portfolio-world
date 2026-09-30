@@ -515,3 +515,12 @@ a { color: inherit; }
   .scroll-hint__icon::after { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }
+
+/* ---------- /debug/frames */
+.debug { position: fixed; inset: 0; z-index: 80; overflow: auto; background: var(--paper); padding: 0 var(--gutter) 40px; font-size: 13px; }
+.debug__top { position: sticky; top: 0; display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.debug__note { color: var(--ink-soft); margin: 12px 0; }
+.debug__table { width: 100%; border-collapse: collapse; }
+.debug__table th, .debug__table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.debug__table th { position: sticky; top: 58px; background: var(--paper-2); font-weight: 600; }
+.debug__table code { font-size: 12px; }

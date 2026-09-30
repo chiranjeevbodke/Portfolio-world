@@ -28,5 +28,6 @@ export function parsePath(path: string) {
   const m = clean.match(/^\/work\/([^/]+)$/)
   if (m) return { page: 'project' as const, slug: decodeURIComponent(m[1]) }
   if (clean === '/work') return { page: 'work' as const, slug: null }
+  if (clean === '/debug/frames') return { page: 'debug' as const, slug: null }
   return { page: 'world' as const, slug: null }
 }

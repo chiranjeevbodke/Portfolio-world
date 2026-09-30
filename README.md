@@ -1,12 +1,21 @@
 # Portfolio world
 
-A stylised low-poly Mumbai neighbourhood you explore at street level. The world is built in Blender
-(`blender/`) and exported to `public/models/world.glb`; the site only reads it by naming convention:
+A stylised low-poly Mumbai neighbourhood you explore at street level. The city is built in Blender and
+exported to `public/models/world-city-v7.glb` (Meshopt-compressed; `world-city-v7-fallback.glb` is the
+uncompressed copy the site falls back to if v7 can't load). The site only reads it by naming convention:
 
 - `slot_<zone>__<id>` meshes with custom props `slot_id`, `aspect`: display frames
 - `route_00`, `route_01`, … empties: the scroll route (eye height 1.7 m)
 
-Replace `world.glb` with a detailed export that keeps those names and everything keeps working.
+Replace the model with a new export that keeps those names and everything keeps working (the model URL is
+`WORLD_URL` in `src/lib/config.ts`). Meshes named `ground*` count as floor only, `sea*` marks water
+(never walkable), `slot_*` frames are left out of collisions.
+
+- `/debug/frames` lists every frame id, what it shows (hero / assigned / auto-filled) and the image used.
+- Spare frames are auto-filled: every project rotates around the city, the same brand never within 25 m,
+  and each frame gets the project image closest to its shape (then cover-cropped).
+- `public/models/world.glb` (old detailed blockout) and `world_blockout.glb` are kept for reference but unused.
+  `blender/03_mumbai_world_detail.py` and `04_street_life.py` belong to that old model.
 
 ## Rebuilding the world in Blender
 

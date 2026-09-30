@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore, live } from '../lib/store'
-import { assignmentFor, type SlotAssignment } from '../content/projects'
+import { assignmentFor, imageForFrame, type SlotAssignment } from '../content/projects'
 import { drawPoster, whenFontsReady, type PosterSpec } from '../lib/posters'
 import type { Slot } from './parseWorld'
 
@@ -29,7 +29,7 @@ export const pointer = { hoverId: null as string | null }
 
 const GLOW = new THREE.Color('#ffd79a')
 const FOCUS_ANGLE = 0.62 // cos of the angle from view centre within which a frame can take focus
-const IMAGE_LOAD_DIST = 90
+const IMAGE_LOAD_DIST = 60 // images load when the visitor is this close
 const tmp = { fwd: new THREE.Vector3(), to: new THREE.Vector3(), label: new THREE.Vector3() }
 let loadTimer = 0
 
@@ -119,11 +119,7 @@ export function Frames() {
         const box = new THREE.Box3()
         for (const m of slot.meshes) box.expandByObject(m)
         const size = box.getSize(new THREE.Vector3()).length()
-        let imageUrl: string | null = null
-        if (a.kind === 'project') {
-          const p = a.project
-          imageUrl = a.role === 'hero' ? p.cover : p.images[a.n] ?? p.cover
-        }
+        const imageUrl = imageForFrame(a, slot.aspect)
         frames.push({
           slot,
           assignment: a,

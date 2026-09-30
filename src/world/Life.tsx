@@ -142,4 +142,3 @@ export function Life() {
   return <primitive object={group} />
 }
 
-useGLTF.preload(LIFE_URL, DRACO)

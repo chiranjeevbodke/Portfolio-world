@@ -3,6 +3,7 @@ import { navigate, parsePath, usePath } from './lib/router'
 import { projectBySlug } from './content/projects'
 import { ProjectPanel } from './ui/ProjectPanel'
 import { WorkPage } from './ui/WorkPage'
+import { DebugFrames } from './ui/DebugFrames'
 
 // three.js is only downloaded when the 3D world is actually shown
 const Experience = lazy(() => import('./world/Experience'))
@@ -27,7 +28,7 @@ export default function App() {
   const [slow, setSlow] = useState(false)
   // what sits underneath a project panel: the world or the /work grid
   const base = useRef<'world' | 'work'>(route.page === 'work' || !can3D ? 'work' : 'world')
-  if (route.page === 'world') base.current = 'world'
+  if (route.page === 'world' || route.page === 'debug') base.current = 'world'
   if (route.page === 'work') base.current = 'work'
 
   // slow devices and reduced motion get the simple /work page
@@ -41,9 +42,10 @@ export default function App() {
     if (slug && !project) navigate(base.current === 'work' ? '/work' : '/', { replace: true })
   }, [slug, project])
 
-  const showWorld = can3D && base.current === 'world'
+  const showDebug = route.page === 'debug'
+  const showWorld = (can3D || showDebug) && base.current === 'world'
   const showWork = base.current === 'work'
-  const overlayOpen = !!project || showWork
+  const overlayOpen = !!project || showWork || showDebug
 
   useEffect(() => {
     document.body.classList.toggle('has-overlay', overlayOpen)
@@ -57,7 +59,7 @@ export default function App() {
 
   return (
     <>
-      {can3D && worldMounted && (
+      {(can3D || showDebug) && worldMounted && (
         <div className={`world-layer ${showWorld ? '' : 'is-hidden'}`}>
           <Suspense fallback={null}>
             <Experience paused={overlayOpen} onSlow={() => setSlow(true)} />
@@ -65,6 +67,7 @@ export default function App() {
         </div>
       )}
       {showWork && <WorkPage can3D={can3D} />}
+      {showDebug && <DebugFrames />}
       {project && (
         <ProjectPanel
           key={project.slug}

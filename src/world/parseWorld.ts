@@ -7,6 +7,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 //   route_00, route_01 ... scroll route empties
 // Everything else is static scenery: it is re-shaded flat and merged by
 // material to keep draw calls low on phones.
+// Works with plain, Draco and Meshopt (quantized) exports, with or without normals:
+// flat shading comes from the material, so no normals are ever computed.
 
 export type Slot = {
   id: string // e.g. "bazaar/shop-sign-01"
@@ -33,6 +35,9 @@ export type ParsedWorld = {
   clouds: THREE.Object3D[]
   /** opening aerial shot: cam_intro / cam_intro_target */
   intro: { position: THREE.Vector3; target: THREE.Vector3 } | null
+  /** original meshes for collisions: ground* is floor only, sea* marks water (never walkable,
+   * never a wall), slot_* frames are left out */
+  colliders: { mesh: THREE.Mesh; role: 'floor' | 'water' | 'any' }[]
 }
 
 const SLOT_RE = /^slot_([a-z0-9-]+)__(.+)$/i
@@ -49,6 +54,23 @@ function slotIdFrom(obj: THREE.Object3D): { id: string; zone: string } | null {
   return m ? { id: `${m[1]}/${m[2]}`, zone: m[1] } : null
 }
 
+/** Quantized (Meshopt / KHR_mesh_quantization) attributes -> plain floats, so geometry can be
+ * transformed and merged without clamping. Values are unchanged. */
+function dequantize(g: THREE.BufferGeometry) {
+  for (const name of Object.keys(g.attributes)) {
+    const a = g.getAttribute(name) as THREE.BufferAttribute | THREE.InterleavedBufferAttribute
+    const interleaved = (a as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute === true
+    const plain = !interleaved && (a as THREE.BufferAttribute).array instanceof Float32Array && !a.normalized
+    if (plain) continue
+    // getX..getW undo normalization for both plain and interleaved attributes
+    const get = [a.getX, a.getY, a.getZ, a.getW]
+    const out = new Float32Array(a.count * a.itemSize)
+    for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) out[i * a.itemSize + k] = get[k].call(a, i)
+    g.setAttribute(name, new THREE.BufferAttribute(out, a.itemSize))
+  }
+  return g
+}
+
 export function toFlatMaterial(src: THREE.Material): THREE.Material {
   const s = src as THREE.MeshStandardMaterial
   const m = new THREE.MeshLambertMaterial({
@@ -57,6 +79,7 @@ export function toFlatMaterial(src: THREE.Material): THREE.Material {
     map: s.map ?? null,
     emissive: s.emissive ? s.emissive.clone() : undefined,
     emissiveMap: s.emissiveMap ?? null,
+    emissiveIntensity: s.emissiveIntensity ?? 1,
     vertexColors: s.vertexColors,
     transparent: s.transparent,
     opacity: s.opacity,
@@ -194,7 +217,7 @@ export function parseWorld(scene: THREE.Object3D): ParsedWorld {
       continue
     }
     const mat = flat(mesh.material)
-    const g = mesh.geometry.clone()
+    const g = dequantize(mesh.geometry.clone())
     const keep = new Set(['position', 'normal'])
     if ((mat as THREE.MeshLambertMaterial).map) keep.add('uv')
     if ((mat as THREE.MeshLambertMaterial).vertexColors) keep.add('color')
@@ -236,6 +259,7 @@ export function parseWorld(scene: THREE.Object3D): ParsedWorld {
       if ((c as THREE.Mesh).isMesh) s.meshes.push(c as THREE.Mesh)
     })
     for (const m of s.meshes) {
+      m.geometry = dequantize(m.geometry.clone())
       m.material = Array.isArray(m.material) ? m.material.map(flat) : flat(m.material)
       m.receiveShadow = true
     }
@@ -282,5 +306,9 @@ export function parseWorld(scene: THREE.Object3D): ParsedWorld {
     lifePaths,
     clouds,
     intro: introPos && introTarget ? { position: introPos, target: introTarget } : null,
+    colliders: staticMeshes.map((mesh) => ({
+      mesh,
+      role: /^ground/i.test(mesh.name) ? ('floor' as const) : /^sea(?!front)/i.test(mesh.name) ? ('water' as const) : ('any' as const),
+    })),
   }
 }

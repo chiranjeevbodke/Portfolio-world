@@ -112,3 +112,5 @@ export function goToSlot(slotId: string, opts: { duration?: number } = {}) {
   if (!path || !slot) return
   moveToRouteTime(path.timeAtDist(path.bestViewDist(slot.center, slot.normal, slot.size)), { ...opts, lookAt: slot.center })
 }
+
+if (import.meta.env.DEV) Object.assign(window, { __rig: { goToSlot, goToZone, moveToRouteTime } })

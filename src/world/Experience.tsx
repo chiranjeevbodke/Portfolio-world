@@ -23,6 +23,8 @@ export default function Experience({ paused, onSlow }: { paused: boolean; onSlow
   useWorldInput(el)
   const duration = useStore((s) => s.path?.duration ?? 0)
   const mode = useStore((s) => s.mode)
+  // animated street life only when the model places some (life_* / lifepath_* markers)
+  const hasLife = useStore((s) => !!s.world && s.world.lifeSpots.length + s.world.lifePaths.length > 0)
 
   // Lenis drives a real page scroll; the track below gives the page its length
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function Experience({ paused, onSlow }: { paused: boolean; onSlow
   }, [paused, mode])
 
   // pixel ratio only ever steps down (changing it causes a hitch, so we don't flip back and forth)
-  const maxDpr = Math.min(window.devicePixelRatio || 1, isCoarse ? 1.6 : 2)
+  const maxDpr = Math.min(window.devicePixelRatio || 1, isCoarse ? 1.5 : 2)
   const [dpr, setDpr] = useState(maxDpr)
   const fog = useMemo(() => new THREE.Fog(LOOK.SKY_HORIZON, LOOK.FOG_NEAR, LOOK.FOG_FAR), [])
 
@@ -69,9 +71,11 @@ export default function Experience({ paused, onSlow }: { paused: boolean; onSlow
             <World />
           </Suspense>
           <Frames />
-          <Suspense fallback={null}>
-            <Life />
-          </Suspense>
+          {hasLife && (
+            <Suspense fallback={null}>
+              <Life />
+            </Suspense>
+          )}
           <CameraRig />
           <MapCapture />
         </Canvas>

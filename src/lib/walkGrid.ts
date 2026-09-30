@@ -35,14 +35,17 @@ export class WalkGrid {
   get maxX() { return this.minX + this.w * this.cell }
   get maxZ() { return this.minZ + this.h * this.cell }
 
-  static build(meshes: THREE.Mesh[]): WalkGrid | null {
+  /** role 'floor': the mesh only ever counts as floor (ground); 'water': its footprint is never
+   * walkable (sea); 'any': floor or blocker by shape */
+  static build(sources: { mesh: THREE.Mesh; role: 'floor' | 'water' | 'any' }[]): WalkGrid | null {
     const floorTris: number[] = [] // x0 z0 x1 z1 x2 z2
     const blockTris: number[] = []
+    const waterTris: number[] = []
     const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3()
     const ab = new THREE.Vector3(), ac = new THREE.Vector3()
     let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity
 
-    for (const mesh of meshes) {
+    for (const { mesh, role } of sources) {
       mesh.updateWorldMatrix(true, false)
       const pos = mesh.geometry.getAttribute('position')
       if (!pos) continue
@@ -57,13 +60,17 @@ export class WalkGrid {
         const n = ab.subVectors(b, a).cross(ac.subVectors(c, a))
         const len = n.length()
         const flat = len > 1e-9 && Math.abs(n.y / len) > 0.7
+        if (role === 'water') {
+          waterTris.push(a.x, a.z, b.x, b.z, c.x, c.z)
+          continue
+        }
         if (flat && yMax <= WALK.STEP && yMin >= WALK.FLOOR_MIN) {
           floorTris.push(a.x, a.z, b.x, b.z, c.x, c.z)
           minX = Math.min(minX, a.x, b.x, c.x)
           maxX = Math.max(maxX, a.x, b.x, c.x)
           minZ = Math.min(minZ, a.z, b.z, c.z)
           maxZ = Math.max(maxZ, a.z, b.z, c.z)
-        } else if (yMax > WALK.STEP && yMin < WALK.HEAD) {
+        } else if (role === 'any' && yMax > WALK.STEP && yMin < WALK.HEAD) {
           blockTris.push(a.x, a.z, b.x, b.z, c.x, c.z)
         }
       }
@@ -107,6 +114,7 @@ export class WalkGrid {
     }
     raster(floorTris, floor)
     raster(blockTris, block)
+    raster(waterTris, block)
 
     // walkable = floor and not blocked, then shrink by the body radius
     const solid = new Uint8Array(w * h)

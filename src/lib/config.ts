@@ -52,3 +52,7 @@ export const ROAM = {
 
 // Draco decoder (self-hosted in public/draco/) for compressed .glb exports
 export const DRACO = '/draco/'
+
+// The city model (Meshopt-compressed) and its uncompressed fallback
+export const WORLD_URL = '/models/world-city-v7.glb'
+export const WORLD_FALLBACK_URL = '/models/world-city-v7-fallback.glb'

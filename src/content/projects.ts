@@ -1,4 +1,5 @@
 import contentMap from '../../content_map.json'
+import imageSizes from 'virtual:image-sizes'
 
 // Content lives in /content/projects/<slug>/: a project.json plus any images / PDFs.
 // Everything is picked up at build time, so adding a file and redeploying is enough.
@@ -39,12 +40,14 @@ export type Project = {
   role: string
   cover: string | null
   images: string[]
+  /** width / height of each image URL (read at build time), for fitting images to frames */
+  aspects: Record<string, number>
   caseStudy: CaseStudy | null
   palette: [string, string] // placeholder colours until real images are added
 }
 
 export type SlotAssignment =
-  | { kind: 'project'; project: Project; role: 'hero' | 'extra'; n: number }
+  | { kind: 'project'; project: Project; role: 'hero' | 'extra' | 'auto'; n: number }
   | { kind: 'fixed'; label: string; id: string }
   | { kind: 'spare' }
 
@@ -94,6 +97,12 @@ function caseStudyOf(slug: string, cs: ProjectJson['caseStudy']): CaseStudy | nu
 export const projects: Project[] = contentMap.projects.map((p, index) => {
   const j = jsons[`/content/projects/${p.slug}/project.json`] ?? {}
   const images = (j.images ?? []).map((n) => fileUrl(p.slug, n)).filter((u): u is string => !!u)
+  const aspects: Record<string, number> = {}
+  for (const name of [j.cover, ...(j.images ?? [])]) {
+    const url = fileUrl(p.slug, name)
+    const size = imageSizes[`/content/projects/${p.slug}/${name}`]
+    if (url && size) aspects[url] = size.w / size.h
+  }
   const category = j.category || p.category
   return {
     slug: p.slug,
@@ -110,6 +119,7 @@ export const projects: Project[] = contentMap.projects.map((p, index) => {
     role: j.role ?? '',
     cover: fileUrl(p.slug, j.cover) ?? images[0] ?? null,
     images,
+    aspects,
     caseStudy: caseStudyOf(p.slug, j.caseStudy),
     palette: PALETTES[index % PALETTES.length],
   }
@@ -124,9 +134,69 @@ for (const p of projects) {
 }
 for (const [id, label] of Object.entries(contentMap.fixed ?? {})) assignments.set(id, { kind: 'fixed', label: String(label), id })
 
+/** Frame plan for the loaded model: content_map.json assignments plus auto-filled spare frames. */
+const plan = new Map<string, SlotAssignment>()
+
 /** What a display frame shows. Frames not listed in content_map.json are treated as spare. */
 export function assignmentFor(slotId: string): SlotAssignment {
-  return assignments.get(slotId) ?? { kind: 'spare' }
+  return plan.get(slotId) ?? assignments.get(slotId) ?? { kind: 'spare' }
+}
+
+export const SPARE_MIN_GAP = 25 // metres: the same brand never shows twice closer than this
+
+/**
+ * Fill every spare frame with a project so each brand appears repeatedly around the city.
+ * Hero and assigned frames never change. Rotates through all projects (least-shown first) and
+ * never puts the same brand on two frames within SPARE_MIN_GAP metres.
+ */
+export function planFrames(slots: { id: string; center: { x: number; z: number } }[]) {
+  plan.clear()
+  if (!projects.length) return plan
+  const placed: { slug: string; x: number; z: number }[] = []
+  const uses = new Map(projects.map((p) => [p.slug, 0]))
+  const spare: typeof slots = []
+  for (const s of slots) {
+    const a = assignments.get(s.id)
+    if (a) {
+      plan.set(s.id, a)
+      if (a.kind === 'project') {
+        placed.push({ slug: a.project.slug, x: s.center.x, z: s.center.z })
+        uses.set(a.project.slug, (uses.get(a.project.slug) ?? 0) + 1)
+      }
+    } else spare.push(s)
+  }
+  // deterministic order: sweep the city west to east, north to south
+  spare.sort((a, b) => a.center.x - b.center.x || a.center.z - b.center.z || a.id.localeCompare(b.id))
+  let turn = 0
+  for (const s of spare) {
+    const nearest = (slug: string) =>
+      placed.reduce((m, q) => (q.slug === slug ? Math.min(m, Math.hypot(q.x - s.center.x, q.z - s.center.z)) : m), Infinity)
+    const order = [...projects].sort(
+      (a, b) => (uses.get(a.slug) ?? 0) - (uses.get(b.slug) ?? 0) || ((a.index - turn + 1000) % projects.length) - ((b.index - turn + 1000) % projects.length),
+    )
+    const pick = order.find((p) => nearest(p.slug) >= SPARE_MIN_GAP) ?? order.reduce((a, b) => (nearest(b.slug) > nearest(a.slug) ? b : a))
+    const n = uses.get(pick.slug) ?? 0
+    plan.set(s.id, { kind: 'project', project: pick, role: 'auto', n })
+    uses.set(pick.slug, n + 1)
+    placed.push({ slug: pick.slug, x: s.center.x, z: s.center.z })
+    turn++
+  }
+  return plan
+}
+
+/** The image a frame shows (null = placeholder poster): assigned frames keep their image,
+ * auto-filled frames use the project image whose shape is closest to the frame (then cover-cropped). */
+export function imageForFrame(a: SlotAssignment, frameAspect: number): string | null {
+  if (a.kind !== 'project') return null
+  const p = a.project
+  if (a.role === 'hero') return p.cover
+  if (a.role === 'extra') return p.images[a.n] ?? p.cover
+  const all = [...new Set([p.cover, ...p.images].filter((u): u is string => !!u))]
+  if (!all.length) return null
+  const score = (u: string) => Math.abs(Math.log((p.aspects[u] ?? 1.5) / frameAspect))
+  const best = Math.min(...all.map(score))
+  const close = all.filter((u) => score(u) <= best + 0.15) // near-ties rotate so repeats vary
+  return close[a.n % close.length]
 }
 
 export function groupedProjects() {

@@ -1,47 +1,183 @@
 {
   "_note": "Which project shows in which display frame. Frame ids match the Blender objects slot_<zone>__<id>. 'hero' is the main frame; clicking any frame opens the full project. Frames under 'spare' are free for new projects.",
   "projects": [
-    { "slug": "ispl", "title": "ISPL", "category": "Events & branding", "zone": "maidan",
-      "hero": "maidan/ispl-scoreboard", "frames": ["maidan/ispl-boundary-west", "maidan/ispl-boundary-south"] },
-    { "slug": "isl", "title": "ISL", "category": "Events & branding", "zone": "maidan",
-      "hero": "maidan/isl-hoarding", "frames": ["maidan/isl-led-north", "maidan/isl-led-south"] },
-    { "slug": "aanandam", "title": "Aanandam: The Symphony of Devotion", "category": "Events & branding", "zone": "maidan",
-      "hero": "maidan/event-stage-screen", "frames": [] },
-    { "slug": "global-peace-honours", "title": "26/11 Global Peace Honours", "category": "Events & branding", "zone": "maidan",
-      "hero": "maidan/event-side-screen-L", "frames": [] },
-    { "slug": "entreprenaari", "title": "Entreprenaari", "category": "Events & branding", "zone": "maidan",
-      "hero": "maidan/event-side-screen-R", "frames": [] },
-    { "slug": "alans-chips-fifa", "title": "Alan's Chips, FIFA edition", "category": "Packaging", "zone": "maidan",
-      "hero": "maidan/snack-stall", "frames": [] },
-
-    { "slug": "bombay-creamery", "title": "Bombay Creamery", "category": "Packaging", "zone": "seafront",
-      "hero": "seafront/icecream-cart", "frames": [] },
-    { "slug": "sosyo-runner", "title": "Sosyo Runner", "category": "Packaging", "zone": "seafront",
-      "hero": "seafront/hoarding-01", "frames": [] },
-    { "slug": "campa-purple", "title": "Campa Purple", "category": "Packaging", "zone": "seafront",
-      "hero": "seafront/hoarding-02", "frames": [] },
-    { "slug": "raskik-gold", "title": "Raskik Gold", "category": "Packaging", "zone": "seafront",
-      "hero": "seafront/hoarding-03", "frames": [] },
-    { "slug": "suncrush", "title": "Suncrush", "category": "Packaging", "zone": "seafront",
-      "hero": "seafront/stall-banner", "frames": [] },
-
-    { "slug": "samvaad", "title": "Samvaad", "category": "Branding & packaging", "zone": "bazaar",
-      "hero": "bazaar/shop-sign-01", "frames": ["bazaar/shopfront-01"] },
-    { "slug": "waggies", "title": "Waggies", "category": "Branding & packaging", "zone": "bazaar",
-      "hero": "bazaar/pet-shop-sign", "frames": ["bazaar/pet-shopfront"] },
-
-    { "slug": "akasa-air", "title": "Akasa Air", "category": "Branding", "zone": "airport",
-      "hero": "airport/terminal-hoarding", "frames": ["airport/plane-livery", "airport/gate-screen", "airport/boarding-kiosk"] }
+    {
+      "slug": "ispl",
+      "title": "ISPL",
+      "category": "Events & branding",
+      "zone": "maidan",
+      "hero": "maidan/ispl-scoreboard",
+      "frames": [
+        "maidan/ispl-boundary-west",
+        "maidan/ispl-boundary-south"
+      ]
+    },
+    {
+      "slug": "isl",
+      "title": "ISL",
+      "category": "Events & branding",
+      "zone": "maidan",
+      "hero": "maidan/isl-hoarding",
+      "frames": [
+        "maidan/isl-led-north",
+        "maidan/isl-led-south"
+      ]
+    },
+    {
+      "slug": "aanandam",
+      "title": "Aanandam: The Symphony of Devotion",
+      "category": "Events & branding",
+      "zone": "maidan",
+      "hero": "maidan/event-stage-screen",
+      "frames": []
+    },
+    {
+      "slug": "global-peace-honours",
+      "title": "26/11 Global Peace Honours",
+      "category": "Events & branding",
+      "zone": "maidan",
+      "hero": "maidan/event-side-screen-L",
+      "frames": []
+    },
+    {
+      "slug": "entreprenaari",
+      "title": "Entreprenaari",
+      "category": "Events & branding",
+      "zone": "maidan",
+      "hero": "maidan/event-side-screen-R",
+      "frames": []
+    },
+    {
+      "slug": "alans-chips-fifa",
+      "title": "Alan's Chips, FIFA edition",
+      "category": "Packaging",
+      "zone": "maidan",
+      "hero": "maidan/snack-stall",
+      "frames": []
+    },
+    {
+      "slug": "bombay-creamery",
+      "title": "Bombay Creamery",
+      "category": "Packaging",
+      "zone": "seafront",
+      "hero": "seafront/icecream-cart",
+      "frames": [
+        "seafront/icecream-banner-01",
+        "seafront/icecream-banner-02"
+      ]
+    },
+    {
+      "slug": "sosyo-runner",
+      "title": "Sosyo Runner",
+      "category": "Packaging",
+      "zone": "seafront",
+      "hero": "seafront/hoarding-01",
+      "frames": []
+    },
+    {
+      "slug": "campa-purple",
+      "title": "Campa Purple",
+      "category": "Packaging",
+      "zone": "seafront",
+      "hero": "seafront/hoarding-02",
+      "frames": []
+    },
+    {
+      "slug": "raskik-gold",
+      "title": "Raskik Gold",
+      "category": "Packaging",
+      "zone": "seafront",
+      "hero": "seafront/hoarding-03",
+      "frames": []
+    },
+    {
+      "slug": "suncrush",
+      "title": "Suncrush",
+      "category": "Packaging",
+      "zone": "seafront",
+      "hero": "seafront/stall-banner",
+      "frames": []
+    },
+    {
+      "slug": "samvaad",
+      "title": "Samvaad",
+      "category": "Branding & packaging",
+      "zone": "bazaar",
+      "hero": "bazaar/shop-sign-01",
+      "frames": [
+        "bazaar/shopfront-01"
+      ]
+    },
+    {
+      "slug": "waggies",
+      "title": "Waggies",
+      "category": "Branding & packaging",
+      "zone": "bazaar",
+      "hero": "bazaar/pet-shop-sign",
+      "frames": [
+        "bazaar/pet-shopfront"
+      ]
+    },
+    {
+      "slug": "akasa-air",
+      "title": "Akasa Air",
+      "category": "Branding",
+      "zone": "airport",
+      "hero": "airport/terminal-hoarding",
+      "frames": [
+        "airport/plane-livery",
+        "airport/gate-screen",
+        "airport/boarding-kiosk",
+        "airport/runway-hoarding",
+        "airport/apron-hoarding"
+      ]
+    }
   ],
   "fixed": {
     "studio/name-sign": "Chiranjeev (name / logo)",
     "studio/about-board": "About: associate creative director, Mumbai"
   },
   "spare": [
-    "bazaar/shop-sign-02", "bazaar/shop-sign-03", "bazaar/shop-sign-04",
-    "bazaar/shopfront-02", "bazaar/shopfront-03", "bazaar/shopfront-04",
-    "bazaar/stall-banner-01", "bazaar/lane-end-hoarding",
-    "seafront/shack-menu-board",
-    "art/mural-01", "art/mural-02", "art/mural-03", "art/gallery-window"
-  ]
+    "airport/lamp-banner-01",
+    "airport/lamp-banner-02",
+    "airport/lamp-banner-03",
+    "airport/lamp-banner-04",
+    "art/easel-01",
+    "art/easel-02",
+    "art/easel-03",
+    "art/easel-04",
+    "art/gallery-window",
+    "art/lamp-banner-01",
+    "art/lamp-banner-02",
+    "art/lamp-banner-03",
+    "art/lamp-banner-04",
+    "art/mural-01",
+    "art/mural-02",
+    "art/mural-03",
+    "bazaar/lane-end-hoarding",
+    "bazaar/shop-sign-02",
+    "bazaar/shop-sign-03",
+    "bazaar/shop-sign-04",
+    "bazaar/shopfront-02",
+    "bazaar/shopfront-03",
+    "bazaar/shopfront-04",
+    "bazaar/stall-banner-01",
+    "maidan/isl-led-east-01",
+    "maidan/isl-led-east-02",
+    "maidan/isl-led-west-01",
+    "maidan/ispl-boundary-west-02",
+    "maidan/ispl-boundary-west-03",
+    "maidan/ispl-boundary-west-04",
+    "seafront/hoarding-04",
+    "seafront/hoarding-05",
+    "seafront/hoarding-06",
+    "seafront/lamp-banner-01",
+    "seafront/lamp-banner-02",
+    "seafront/lamp-banner-03",
+    "seafront/lamp-banner-04",
+    "seafront/lamp-banner-05",
+    "seafront/lamp-banner-06",
+    "seafront/shack-menu-board"
+  ],
+  "_fill_rule": "Spare frames are auto-filled by the website: rotate through ALL projects so every brand appears repeatedly around the city (see 05_brands_everywhere_prompt.md). Hero and assigned frames never change."
 }

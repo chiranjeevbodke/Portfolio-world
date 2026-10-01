@@ -11,6 +11,7 @@ import { Lights } from './Lights'
 import { CameraRig } from './CameraRig'
 import { Frames } from './Frames'
 import { Life } from './Life'
+import { Cinematic } from './Cinematic'
 import { useWorldInput } from './useWorldInput'
 import { MapCapture } from './MapCapture'
 import { Overlay } from '../ui/Overlay'
@@ -42,6 +43,8 @@ export default function Experience({ paused, onSlow }: { paused: boolean; onSlow
   // pixel ratio only ever steps down (changing it causes a hitch, so we don't flip back and forth)
   const maxDpr = Math.min(window.devicePixelRatio || 1, isCoarse ? 1.5 : 2)
   const [dpr, setDpr] = useState(maxDpr)
+  // cinematic finish (light shafts, haze, grade); dropped first if the device struggles
+  const [fx, setFx] = useState(() => !/[?&]fx=0/.test(location.search))
   const fog = useMemo(() => new THREE.Fog(LOOK.SKY_HORIZON, LOOK.FOG_NEAR, LOOK.FOG_FAR), [])
 
   return (
@@ -61,7 +64,10 @@ export default function Experience({ paused, onSlow }: { paused: boolean; onSlow
         >
           <PerformanceMonitor
             bounds={() => [45, 58]}
-            onDecline={() => setDpr((d) => Math.max(0.75, Math.round((d - 0.25) * 100) / 100))}
+            onDecline={() => {
+              if (fx) setFx(false)
+              else setDpr((d) => Math.max(0.75, Math.round((d - 0.25) * 100) / 100))
+            }}
             flipflops={3}
             onFallback={onSlow}
           />
@@ -77,6 +83,7 @@ export default function Experience({ paused, onSlow }: { paused: boolean; onSlow
             </Suspense>
           )}
           <CameraRig />
+          {fx && <Cinematic low={isCoarse} />}
           <MapCapture />
         </Canvas>
       </div>

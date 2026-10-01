@@ -10,6 +10,7 @@ import { assignmentFor, projectBySlug } from '../content/projects'
 import { openFrame } from '../world/useWorldInput'
 import { MiniMap } from './MiniMap'
 import { Joystick } from './Joystick'
+import { ControlsGuide } from './ControlsGuide'
 
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 const initialSlug = parsePath(location.pathname).slug
@@ -230,6 +231,7 @@ export function Overlay() {
           <MiniMap />
           <Joystick />
           <BackToWalk />
+          <ControlsGuide />
         </>
       )}
       <div className="vignette" aria-hidden />
